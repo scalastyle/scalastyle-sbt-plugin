@@ -36,9 +36,9 @@ object Tasks {
         logger.success("created: %s".format(target))
 
         if (result.errors > 0)
-          sys.error("exists error")
+          logger.error("exists error")
         else if (args.exists(_ == "w") && result.warnings > 0)
-          sys.error("exists warning")
+          logger.error("exists warning")
       } else {
         sys.error("not exists: %s".format(config))
       }
