@@ -16,7 +16,7 @@ add following line to `project/plugins.sbt`
   )
 ```
 
-and, inject plugin settings into project in build.sbt:
+and, inject plugin settings into project in `build.sbt`:
 
 ```scala
   import com.github.aselab.scalastyle._
