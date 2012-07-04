@@ -1,49 +1,43 @@
 package com.github.aselab.scalastyle
 
 import sbt._
+import org.scalastyle._
+
 
 case class ScalaStyle(errors: List[ScalaStyle.Alert]) {
   def toCheckStyleFormat =
-    """<?xml version="1.0" encoding="UTF-8"?>
-    """ + <checkstyle version="5.0">{
+    <checkstyle version="5.0">{
       errors.groupBy(_.file.absolutePath).map { case (k, v) =>
         <file name={k}>{
           v.map { e =>
             e.column.map { column =>
               <error line={e.line.toString} column={column.toString}
-                severity={e.warnLevel} message={e.message} source="org.scalastyle.Main"/>
+                severity={e.warnLevel} message={e.message} source={e.clazz.toString}/>
             }.getOrElse {
               <error line={e.line.toString} severity={e.warnLevel}
-                message={e.message} source="org.scalastyle.Main"/>
+                message={e.message} source={e.clazz.toString}/>
             }
           }
         }</file>
       }
-    }</checkstyle>.toString
+    }</checkstyle>
 }
 
 object ScalaStyle {
-  import org.scalastyle.Main.main
 
-  def apply(config: File, sourceDir: File): ScalaStyle = ScalaStyle(
-    SecurityUtil.notExit {
-      main(Array("-c", config.absolutePath, sourceDir.absolutePath))
-    }.split("\n").toList.flatMap(Alert(_))
-  )
+  case class Alert(warnLevel: String, clazz: Class[_ <: Checker[_]],
+    file: File, message: String, line: Int, column: Option[Int])
 
-  case class Alert(warnLevel: String, file: File, message: String, line: Int, column: Option[Int] = None)
-
-  object Alert {
-    val lineRegex = """(.*) file=(.*) message=(.*) line=(\d+)""".r
-    val columnRegex = """(.*) file=(.*) message=(.*) line=(\d+) column=(\d+)""".r
-
-    def apply(line: String): Option[Alert] = Option(line match {
-      case lineRegex(warnLevel, f, message, line) =>
-        Alert(warnLevel, file(f), message, line.toInt)
-      case columnRegex(warnLevel, f, message, line, column) =>
-        Alert(warnLevel, file(f), message, line.toInt, Some(column.toInt))
-      case _ => null
-    })
+  def apply(config: File, sourceDir: File): ScalaStyle = {
+    val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
+    ScalaStyle(
+      new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(sourceDir)).collect {
+        case StyleError(file, clazz, key, level, args, line, column, message) =>
+          Alert(level.name, clazz, sbt.file(file.name), message.getOrElse(key), line.get, column)
+        case StyleException(file, clazz, message, stacktrace, line, column) =>
+          Alert("error", clazz.orNull, sbt.file(file.name), message, line.get, column)
+      }
+    )
   }
 }
 

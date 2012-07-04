@@ -24,12 +24,13 @@ object PluginKeys {
 
 object Tasks {
   import PluginKeys._
+  import scala.xml.XML
 
   val scalaStyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
     (_, config, scalaSource in Compile, scalaStyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
       val logger = streams.log
       if (config.exists) {
-        IO.write(target, ScalaStyle(config, sourceDir).toCheckStyleFormat)
+        XML.save(target.absolutePath, ScalaStyle(config, sourceDir).toCheckStyleFormat, "utf-8", true)
         logger.success("created: %s".format(target))
       } else {
         logger.error("not exists: %s".format(config))
