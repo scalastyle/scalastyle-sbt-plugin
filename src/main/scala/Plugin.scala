@@ -30,10 +30,17 @@ object Tasks {
     (_, config, scalaSource in Compile, scalaStyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
       val logger = streams.log
       if (config.exists) {
-        XML.save(target.absolutePath, ScalaStyle(config, sourceDir).toCheckStyleFormat, "utf-8", true)
+        val scalaStyle = ScalaStyle(config, sourceDir)
+        XML.save(target.absolutePath, scalaStyle.toCheckStyleFormat, "utf-8", true)
+        val result = scalaStyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
+
+        if (result.errors > 0)
+          sys.error("exists error")
+        else if (args.exists(_ == "w") && result.warnings > 0)
+          sys.error("exists warning")
       } else {
-        logger.error("not exists: %s".format(config))
+        sys.error("not exists: %s".format(config))
       }
     }
   }

@@ -8,7 +8,7 @@ organization := "com.github.aselab"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.1-SNAPSHOT"
+version := "0.1.0-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.scalastyle" %% "scalastyle" % "0.1.0-SNAPSHOT",
