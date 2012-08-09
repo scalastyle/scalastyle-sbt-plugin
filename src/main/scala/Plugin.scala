@@ -9,7 +9,7 @@ object ScalaStylePlugin extends Plugin {
   val Settings = Seq(
     scalaStyle <<= Tasks.scalaStyle,
     generateConfig <<= Tasks.generateConfig,
-    scalaStyleTarget := file("target/scalastyle-result.xml"),
+    scalaStyleTarget <<= (target).map(_ / "scalastyle-result.xml"),
     // TODO: to configuration file(HOCON format).
     config := file("scalastyle-config.xml")
   )
@@ -17,7 +17,7 @@ object ScalaStylePlugin extends Plugin {
 
 object PluginKeys {
   lazy val scalaStyle = InputKey[Unit]("scalastyle")
-  lazy val scalaStyleTarget = SettingKey[File]("scalastyle-target")
+  lazy val scalaStyleTarget = TaskKey[File]("scalastyle-target")
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
 }

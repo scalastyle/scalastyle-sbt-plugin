@@ -27,8 +27,8 @@ and, inject plugin settings into project in `build.sbt`:
 ## Usage
 
 You can check your code by typing `sbt scalastyle`.
-The result is output `target/scalastyle-result.xml` (its compatible CheckStyle format).
+The result file is `target/scalastyle-result.xml` (CheckStyle compatible format).
 
-ScalaStyle Configuration file is used by default is `./scalastyle-config.xml`.
-Generate default configuration file, by typing `sbt scalastyle-generate-config`.
+ScalaStyle Configuration file is `./scalastyle-config.xml` by default.
+To generate default configuration file, by typing `sbt scalastyle-generate-config`.
 
