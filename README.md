@@ -1,6 +1,6 @@
 # scalastyle-sbt-plugin
 
-This project is intended to provide SBT 0.11.3 plugin support for Scalastyle.
+This project is intended to provide SBT 0.12.0 plugin support for Scalastyle.
 For more information about Scalastyle, see https://github.com/scalastyle/scalastyle.
 
 ## Setup
@@ -11,8 +11,7 @@ add following line to `project/plugins.sbt`
   addSbtPlugin("com.github.aselab" %% "scalastyle-sbt-plugin" % "0.1.0")
 
   resolvers ++= Seq(
-    "aselab repo" at "http://aselab.github.com/maven/",
-    "Sonatype Nexus Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+    "aselab repo" at "http://aselab.github.com/maven/"
   )
 ```
 
