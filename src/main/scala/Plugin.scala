@@ -24,14 +24,12 @@ object PluginKeys {
 
 object Tasks {
   import PluginKeys._
-  import scala.xml.XML
 
   val scalaStyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
     (_, config, scalaSource in Compile, scalaStyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
       val logger = streams.log
       if (config.exists) {
         val scalaStyle = ScalaStyle(config, sourceDir)
-        XML.save(target.absolutePath, scalaStyle.toCheckStyleFormat, "utf-8", true)
         val result = scalaStyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
 
