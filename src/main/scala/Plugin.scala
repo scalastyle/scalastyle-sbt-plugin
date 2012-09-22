@@ -1,3 +1,19 @@
+// Copyright (C) 2011-2012 the original author or authors.
+// See the LICENCE.txt file distributed with this work for additional
+// information regarding copyright ownership.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package org.scalastyle.sbt
 
 import sbt._
@@ -35,10 +51,11 @@ object Tasks {
         val result = scalaStyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
 
-        if (result.errors > 0)
+        if (result.errors > 0) {
           logger.error("exists error")
-        else if (args.exists(_ == "w") && result.warnings > 0)
+        } else if (args.exists(_ == "w") && result.warnings > 0) {
           logger.error("exists warning")
+        }
       } else {
         sys.error("not exists: %s".format(config))
       }
@@ -47,7 +64,7 @@ object Tasks {
 
   val generateConfig: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
     (_, config, streams) map { case (args, to, streams) =>
-      IOUtil.copyJarResourses(getClass.getResource("/scalastyle-config.xml"), to.absolutePath, streams.log)
+      IOUtil.copyJarResources(getClass.getResource("/scalastyle-config.xml"), to.absolutePath, streams.log)
     }
   }
 }
