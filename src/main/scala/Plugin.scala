@@ -20,21 +20,21 @@ import sbt._
 import Keys._
 import org.scalastyle.XmlOutput
 
-object ScalaStylePlugin extends Plugin {
+object ScalastylePlugin extends Plugin {
   import PluginKeys._
 
   val Settings = Seq(
-    scalaStyle <<= Tasks.scalaStyle,
+    scalastyle <<= Tasks.scalastyle,
     generateConfig <<= Tasks.generateConfig,
-    scalaStyleTarget <<= (target).map(_ / "scalastyle-result.xml"),
+    scalastyleTarget <<= (target).map(_ / "scalastyle-result.xml"),
     // TODO: to configuration file(HOCON format).
     config := file("scalastyle-config.xml")
   )
 }
 
 object PluginKeys {
-  lazy val scalaStyle = InputKey[Unit]("scalastyle")
-  lazy val scalaStyleTarget = TaskKey[File]("scalastyle-target")
+  lazy val scalastyle = InputKey[Unit]("scalastyle")
+  lazy val scalastyleTarget = TaskKey[File]("scalastyle-target")
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
 }
@@ -42,13 +42,13 @@ object PluginKeys {
 object Tasks {
   import PluginKeys._
 
-  val scalaStyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
-    (_, config, scalaSource in Compile, scalaStyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
+  val scalastyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
+    (_, config, scalaSource in Compile, scalastyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
       val logger = streams.log
       if (config.exists) {
-        val scalaStyle = ScalaStyle(config, sourceDir)
-        XmlOutput.save(target.absolutePath, scalaStyle.messages)
-        val result = scalaStyle.printResults(args.exists(_ == "q"))
+        val scalastyle = Scalastyle(config, sourceDir)
+        XmlOutput.save(target.absolutePath, scalastyle.messages)
+        val result = scalastyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
 
         if (result.errors > 0) {

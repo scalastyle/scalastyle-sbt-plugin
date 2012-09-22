@@ -16,7 +16,7 @@ add following line to `project/plugins.sbt`
 
 and, inject plugin settings into project in `build.sbt`:
 
-    org.scalastyle.sbt.ScalaStylePlugin.Settings
+    org.scalastyle.sbt.ScalastylePlugin.Settings
 
 ## Usage
 

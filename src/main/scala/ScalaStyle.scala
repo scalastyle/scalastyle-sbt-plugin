@@ -20,8 +20,8 @@ import sbt._
 import org.scalastyle._
 import java.util.Date
 
-case class ScalaStyle(messages: List[Message[FileSpec]]) {
-  import ScalaStyle._
+case class Scalastyle(messages: List[Message[FileSpec]]) {
+  import Scalastyle._
 
   def printResults(isQuiet: Boolean = false): OutputResult = {
     def now: Long = new Date().getTime
@@ -39,13 +39,13 @@ case class ScalaStyle(messages: List[Message[FileSpec]]) {
 
 }
 
-object ScalaStyle {
+object Scalastyle {
   case class Alert(warnLevel: String, clazz: Class[_ <: Checker[_]],
     file: File, message: String, line: Option[Int], column: Option[Int])
 
-  def apply(config: File, sourceDir: File): ScalaStyle = {
+  def apply(config: File, sourceDir: File): Scalastyle = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    ScalaStyle(new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(sourceDir)))
+    Scalastyle(new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(sourceDir)))
   }
 }
 
