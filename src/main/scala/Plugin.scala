@@ -1,7 +1,8 @@
-package com.github.aselab.scalastyle
+package org.scalastyle.sbt
 
 import sbt._
 import Keys._
+import org.scalastyle.XmlOutput
 
 object ScalaStylePlugin extends Plugin {
   import PluginKeys._
@@ -30,6 +31,7 @@ object Tasks {
       val logger = streams.log
       if (config.exists) {
         val scalaStyle = ScalaStyle(config, sourceDir)
+        XmlOutput.save(target.absolutePath, scalaStyle.messages)
         val result = scalaStyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
 

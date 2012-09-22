@@ -1,4 +1,4 @@
-package com.github.aselab.scalastyle
+package org.scalastyle.sbt
 
 import sbt._
 import org.scalastyle._
@@ -22,7 +22,6 @@ case class ScalaStyle(messages: List[Message[FileSpec]]) {
 }
 
 object ScalaStyle {
-
   case class Alert(warnLevel: String, clazz: Class[_ <: Checker[_]],
     file: File, message: String, line: Option[Int], column: Option[Int])
 

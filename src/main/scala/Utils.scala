@@ -1,4 +1,4 @@
-package com.github.aselab.scalastyle
+package org.scalastyle.sbt
 
 import sbt._
 
