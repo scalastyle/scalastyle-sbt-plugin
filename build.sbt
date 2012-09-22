@@ -29,4 +29,4 @@ publishTo <<= version { (v: String) =>
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
-org.scalastyle.sbt.ScalaStylePlugin.Settings
+org.scalastyle.sbt.ScalastylePlugin.Settings
