@@ -47,7 +47,9 @@ object Tasks {
       val logger = streams.log
       if (config.exists) {
         val scalastyle = Scalastyle(config, sourceDir)
-        XmlOutput.save(target.absolutePath, scalastyle.messages)
+
+        scalastyle.saveToXml(target.absolutePath)
+
         val result = scalastyle.printResults(args.exists(_ == "q"))
         logger.success("created: %s".format(target))
 

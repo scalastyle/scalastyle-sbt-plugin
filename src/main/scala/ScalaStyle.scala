@@ -19,6 +19,7 @@ package org.scalastyle.sbt
 import sbt._
 import org.scalastyle._
 import java.util.Date
+import scala.io.Codec
 
 case class Scalastyle(messages: List[Message[FileSpec]]) {
   import Scalastyle._
@@ -37,15 +38,19 @@ case class Scalastyle(messages: List[Message[FileSpec]]) {
     outputResult
   }
 
+  def saveToXml(path: String)(implicit codec: Codec) {
+    XmlOutput.save(path, codec.charSet.toString, messages)
+  }
 }
 
 object Scalastyle {
   case class Alert(warnLevel: String, clazz: Class[_ <: Checker[_]],
     file: File, message: String, line: Option[Int], column: Option[Int])
 
-  def apply(config: File, sourceDir: File): Scalastyle = {
+  def apply(config: File, sourceDir: File)(implicit codec: Codec): Scalastyle = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    Scalastyle(new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(sourceDir)))
+    val encoding = codec.charSet.toString
+    Scalastyle(new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir))))
   }
 }
 
