@@ -14,6 +14,8 @@ publishMavenStyle := true
 
 resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 
+resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+
 publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
