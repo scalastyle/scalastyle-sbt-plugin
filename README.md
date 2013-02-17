@@ -3,15 +3,15 @@
 This project is intended to provide SBT 0.12.0 plugin support for Scalastyle.
 For more information about Scalastyle, see http://www.scalastyle.org.
 
-This plugin is still a SNAPSHOT, and uses version 0.2.0-SNAPSHOT of Scalastyle itself.
+This plugin uses version 0.2.0 of Scalastyle itself.
 
 ## Setup
 
 add following line to `project/plugins.sbt`
 
-    addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.2.0-SNAPSHOT")
+    addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.2.0")
 
-    resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+    resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 
 and, inject plugin settings into project in `build.sbt`:
