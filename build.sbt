@@ -1,6 +1,6 @@
 sbtPlugin := true
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0"
 
 scalacOptions := Seq("-deprecation", "-unchecked")
 
@@ -19,8 +19,7 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" % "scalastyle_2.9.2" % "0.3.0-SNAPSHOT",
-  "org.specs2" %% "specs2" % "1.12.1" % "test"
+  "org.scalastyle" %% "scalastyle" % "0.3.0-SNAPSHOT"
 )
 
 publishTo <<= version { (v: String) =>
@@ -35,7 +34,7 @@ publishArtifact in Test := false
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
-org.scalastyle.sbt.ScalastylePlugin.Settings
+// org.scalastyle.sbt.ScalastylePlugin.Settings
 
 pomIncludeRepository := { _ => false }
 
