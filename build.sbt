@@ -1,14 +1,12 @@
 sbtPlugin := true
 
-scalaVersion := "2.10.0"
-
 scalacOptions := Seq("-deprecation", "-unchecked")
 
 organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.3.1"
+version := "0.3.2-SNAPSHOT"
 
 publishMavenStyle := true
 
@@ -19,7 +17,7 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.3.1"
+  "org.scalastyle" %% "scalastyle" % "0.3.2-SNAPSHOT" changing()
 )
 
 publishTo <<= version { (v: String) =>
