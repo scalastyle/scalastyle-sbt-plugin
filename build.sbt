@@ -6,7 +6,7 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.3.2-SNAPSHOT"
+version := "0.3.2"
 
 publishMavenStyle := true
 
@@ -17,7 +17,7 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.3.2-SNAPSHOT" changing()
+  "org.scalastyle" %% "scalastyle" % "0.3.2"
 )
 
 publishTo <<= version { (v: String) =>
