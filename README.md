@@ -3,13 +3,13 @@
 This project is intended to provide SBT 0.12.0 plugin support for Scalastyle.
 For more information about Scalastyle, see http://www.scalastyle.org.
 
-This plugin uses version 0.3.1 of Scalastyle itself.
+This plugin uses version 0.3.2 of Scalastyle itself.
 
 ## Setup
 
 add following line to `project/plugins.sbt`
 
-    addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.3.1")
+    addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.3.2")
 
     resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
