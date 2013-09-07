@@ -1,6 +1,6 @@
 # scalastyle-sbt-plugin
 
-This project is intended to provide SBT 0.12.0 plugin support for Scalastyle.
+This project is intended to provide SBT 0.12.0 and 0.13.0 plugin support for Scalastyle.
 For more information about Scalastyle, see http://www.scalastyle.org.
 
 This plugin uses version 0.3.2 of Scalastyle itself.
