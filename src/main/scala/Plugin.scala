@@ -28,7 +28,8 @@ object ScalastylePlugin extends Plugin {
     generateConfig <<= Tasks.generateConfig,
     scalastyleTarget <<= (target).map(_ / "scalastyle-result.xml"),
     // TODO: to configuration file(HOCON format).
-    config := file("scalastyle-config.xml")
+    config := file("scalastyle-config.xml"),
+    failOnError := true
   )
 }
 
@@ -36,6 +37,7 @@ object PluginKeys {
   lazy val scalastyle = InputKey[Unit]("scalastyle")
   lazy val scalastyleTarget = TaskKey[File]("scalastyle-target")
   lazy val config = SettingKey[File]("scalastyle-config")
+  lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
 }
 
@@ -43,23 +45,30 @@ object Tasks {
   import PluginKeys._
 
   val scalastyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
-    (_, config, scalaSource in Compile, scalastyleTarget, streams) map { case (args, config, sourceDir, target, streams) =>
-      val logger = streams.log
-      if (config.exists) {
-        val scalastyle = Scalastyle(config, sourceDir)
+    (_, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
+      case (args, config, failOnError, sourceDir, target, streams) => {
+        val logger = streams.log
+        if (config.exists) {
+          val scalastyle = Scalastyle(config, sourceDir)
 
-        scalastyle.saveToXml(target.absolutePath)
+          scalastyle.saveToXml(target.absolutePath)
 
-        val result = scalastyle.printResults(args.exists(_ == "q"))
-        logger.success("created: %s".format(target))
+          val result = scalastyle.printResults(args.exists(_ == "q"))
+          logger.success("created: %s".format(target))
 
-        if (result.errors > 0) {
-          logger.error("exists error")
-        } else if (args.exists(_ == "w") && result.warnings > 0) {
-          logger.error("exists warning")
+          def onHasErrors(message: String) {
+            if (failOnError) error(message)
+            else logger.error(message)
+          }
+
+          if (result.errors > 0) {
+            onHasErrors("exists error")
+          } else if (args.exists(_ == "w") && result.warnings > 0) {
+            onHasErrors("exists warning")
+          }
+        } else {
+          sys.error("not exists: %s".format(config))
         }
-      } else {
-        sys.error("not exists: %s".format(config))
       }
     }
   }
