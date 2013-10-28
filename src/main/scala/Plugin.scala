@@ -56,9 +56,13 @@ object Tasks {
           val result = scalastyle.printResults(args.exists(_ == "q"))
           logger.success("created: %s".format(target))
 
-          def onHasErrors(message: String) {
-            if (failOnError) error(message)
-            else logger.error(message)
+          def onHasErrors(message: String): Unit = {
+            if (failOnError) {
+              error(message)
+            }
+            else {
+              logger.error(message)
+            }
           }
 
           if (result.errors > 0) {

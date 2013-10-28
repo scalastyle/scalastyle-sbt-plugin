@@ -24,7 +24,7 @@ object IOUtil {
     def hasNext: Boolean = e.hasMoreElements
   }
 
-  def copyJarResources(url: java.net.URL, destination: String, logger: Logger) {
+  def copyJarResources(url: java.net.URL, destination: String, logger: Logger): Unit =  {
     url.openConnection match {
       case connection: java.net.JarURLConnection =>
         val entryName = connection.getEntryName

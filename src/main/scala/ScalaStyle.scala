@@ -38,7 +38,7 @@ case class Scalastyle(messages: List[Message[FileSpec]]) {
     outputResult
   }
 
-  def saveToXml(path: String)(implicit codec: Codec) {
+  def saveToXml(path: String)(implicit codec: Codec): Unit = {
     XmlOutput.save(path, codec.charSet.toString, messages)
   }
 }
