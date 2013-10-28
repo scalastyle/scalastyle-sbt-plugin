@@ -6,7 +6,7 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.3.2"
+version := "0.3.3-SNAPSHOT"
 
 publishMavenStyle := true
 
@@ -32,7 +32,7 @@ publishArtifact in Test := false
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
-// org.scalastyle.sbt.ScalastylePlugin.Settings
+org.scalastyle.sbt.ScalastylePlugin.Settings
 
 pomIncludeRepository := { _ => false }
 
