@@ -1,0 +1,5 @@
+# scalastyle with target output file
+> clean
+$ delete target/scalastyle-output.xml
+> scalastyle
+$ exists target/scalastyle-output.xml
