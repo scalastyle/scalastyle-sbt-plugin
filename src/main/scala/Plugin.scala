@@ -19,9 +19,7 @@ package org.scalastyle.sbt
 import java.util.Date
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
-
 import scala.io.Codec
-
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
 import org.scalastyle.Message
@@ -30,7 +28,6 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.TextOutput
 import org.scalastyle.XmlOutput
-
 import sbt.Compile
 import sbt.ConfigKey.configurationToKey
 import sbt.File
@@ -50,59 +47,73 @@ import sbt.file
 import sbt.inputTask
 import sbt.richFile
 import sbt.richInitialize
+import sbt.std.TaskStreams
+import sbt.ScopedKey
 
 object ScalastylePlugin extends Plugin {
   import PluginKeys._ // scalastyle:ignore import.grouping underscore.import
 
   val Settings = Seq(
-    scalastyle <<= Tasks.scalastyle,
-    generateConfig <<= Tasks.generateConfig,
-    scalastyleTarget <<= (target).map(_ / "scalastyle-result.xml"),
+    scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
     config := file("scalastyle-config.xml"),
-    failOnError := true)
+    failOnError := true,
+    scalastyle <<= inputTask {
+      (argTask: TaskKey[Seq[String]]) => {
+        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
+          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        }
+      }
+    },
+    generateConfig <<= inputTask {
+      (args: TaskKey[Seq[String]]) => {
+        (args, config, streams) map {
+          (args, config, streams) => Tasks.doGenerateConfig(args, config, streams)
+        }
+      }
+    }
+  )
 }
 
 object PluginKeys {
   lazy val scalastyle = InputKey[Unit]("scalastyle")
-  lazy val scalastyleTarget = TaskKey[File]("scalastyle-target")
+  lazy val scalastyleTarget = SettingKey[File]("scalastyle-target")
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
 }
 
 object Tasks {
-  import PluginKeys._ // scalastyle:ignore import.grouping underscore.import
+  def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, sourceDir: File, output: File,
+    streams: TaskStreams[ScopedKey[_]]): Unit = {
+    val logger = streams.log
+    if (config.exists) {
+      val messages = runScalastyle(config, sourceDir)
 
-  val scalastyle: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
-    (_, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
-      case (args, config, failOnError, sourceDir, target, streams) => {
-        val logger = streams.log
-        if (config.exists) {
-          val messages = runScalastyle(config, sourceDir)
+      saveToXml(messages, output.absolutePath)
 
-          saveToXml(messages, target.absolutePath)
+      val result = printResults(messages, args.exists(_ == "q"))
+      logger.success("created: %s".format(target))
 
-          val result = printResults(messages, args.exists(_ == "q"))
-          logger.success("created: %s".format(target))
-
-          def onHasErrors(message: String): Unit = {
-            if (failOnError) {
-              error(message)
-            } else {
-              logger.error(message)
-            }
-          }
-
-          if (result.errors > 0) {
-            onHasErrors("exists error")
-          } else if (args.exists(_ == "w") && result.warnings > 0) {
-            onHasErrors("exists warning")
-          }
+      def onHasErrors(message: String): Unit = {
+        if (failOnError) {
+          error(message)
         } else {
-          sys.error("not exists: %s".format(config))
+          logger.error(message)
         }
       }
+
+      if (result.errors > 0) {
+        onHasErrors("exists error")
+      } else if (args.exists(_ == "w") && result.warnings > 0) {
+        onHasErrors("exists warning")
+      }
+    } else {
+      sys.error("not exists: %s".format(config))
     }
+  }
+
+  def doGenerateConfig(args: Seq[String], config: File, streams: TaskStreams[ScopedKey[_]]): Unit = {
+    getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
   private[this] def runScalastyle(config: File, sourceDir: File) = {
@@ -128,13 +139,6 @@ object Tasks {
 
   private[this] def saveToXml(messages: List[Message[FileSpec]], path: String)(implicit codec: Codec): Unit = {
     XmlOutput.save(path, codec.charSet.toString, messages)
-  }
-
-  val generateConfig: Project.Initialize[sbt.InputTask[Unit]] = inputTask {
-    (_, config, streams) map {
-      case (args, to, streams) =>
-        getFileFromJar(getClass.getResource("/scalastyle-config.xml"), to.absolutePath, streams.log)
-    }
   }
 
   private[this] implicit def enumToIterator[A](e: java.util.Enumeration[A]): Iterator[A] = new Iterator[A] {

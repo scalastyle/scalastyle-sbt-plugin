@@ -32,8 +32,6 @@ publishArtifact in Test := false
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
-//org.scalastyle.sbt.ScalastylePlugin.Settings
-
 pomIncludeRepository := { _ => false }
 
 pomExtra := (
