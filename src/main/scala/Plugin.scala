@@ -130,6 +130,7 @@ object Tasks {
       println("Processed " + outputResult.files + " file(s)")
       println("Found " + outputResult.errors + " errors")
       println("Found " + outputResult.warnings + " warnings")
+      println("Found " + outputResult.infos + " infos")
       println("Finished in " + (now - start) + " ms")
     }
     // scalastyle:on regex
