@@ -46,7 +46,6 @@ import sbt.TaskKey
 import sbt.file
 import sbt.inputTask
 import sbt.richFile
-import sbt.richInitialize
 import sbt.std.TaskStreams
 import sbt.ScopedKey
 
