@@ -26,7 +26,7 @@ import org.scalastyle.Message
 import org.scalastyle.OutputResult
 import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
-import org.scalastyle.TextOutput
+import org.scalastyle.Output
 import org.scalastyle.XmlOutput
 import sbt.Compile
 import sbt.ConfigKey.configurationToKey
@@ -90,7 +90,9 @@ object Tasks {
 
       saveToXml(messages, output.absolutePath)
 
-      val result = printResults(messages, args.exists(_ == "q"))
+      val warnError = args.exists(_ == "w")
+      val result = printResults(logger, messages, quiet = args.exists(_ == "q"),
+                                warnError = warnError)
       logger.success("created: %s".format(target))
 
       def onHasErrors(message: String): Unit = {
@@ -103,7 +105,7 @@ object Tasks {
 
       if (result.errors > 0) {
         onHasErrors("exists error")
-      } else if (args.exists(_ == "w") && result.warnings > 0) {
+      } else if (warnError && result.warnings > 0) {
         onHasErrors("exists warning")
       }
     } else {
@@ -120,17 +122,18 @@ object Tasks {
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
   }
 
-  private[this] def printResults(messages: List[Message[FileSpec]], quiet: Boolean = false): OutputResult = {
+  private[this] def printResults(logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
     def now: Long = new Date().getTime
     val start = now
-    val outputResult = new TextOutput().output(messages)
+    val outputResult =
+      new SbtLogOutput(logger, warnError = warnError).output(messages)
     // scalastyle:off regex
     if (!quiet) {
-      println("Processed " + outputResult.files + " file(s)")
-      println("Found " + outputResult.errors + " errors")
-      println("Found " + outputResult.warnings + " warnings")
-      println("Found " + outputResult.infos + " infos")
-      println("Finished in " + (now - start) + " ms")
+      logger.info("Processed " + outputResult.files + " file(s)")
+      logger.info("Found " + outputResult.errors + " errors")
+      logger.info("Found " + outputResult.warnings + " warnings")
+      logger.info("Found " + outputResult.infos + " infos")
+      logger.info("Finished in " + (now - start) + " ms")
     }
     // scalastyle:on regex
 
@@ -179,4 +182,44 @@ object Tasks {
 
     if (file.exists) askUser else true
   }
+}
+
+/** Report style warnings prettily to sbt logger.
+  *
+  * @todo factor with TextOutput from scalastyle Output.scala
+  */
+private[sbt]
+class SbtLogOutput[T <: FileSpec](logger: Logger, warnError: Boolean = false)
+    extends Output[T] {
+  import org.scalastyle.{
+    StartWork, EndWork, StartFile, EndFile, StyleError, StyleException,
+    Level, ErrorLevel, WarningLevel, InfoLevel, MessageHelper
+  }
+
+  private val messageHelper = new MessageHelper(this.getClass().getClassLoader())
+
+  override def message(m: Message[T]): Unit = m match {
+    case StartWork() => logger.verbose("Starting scalastyle")
+    case EndWork() =>
+    case StartFile(file) => logger.verbose("start file " + file)
+    case EndFile(file) => logger.verbose("end file " + file)
+    case StyleError(file, clazz, key, level, args, line, column, customMessage) =>
+      plevel(level)(location(file, line, column) + ": " +
+          Output.findMessage(messageHelper, clazz, key, args, customMessage))
+    case StyleException(file, clazz, message, stacktrace, line, column) =>
+      logger.error(location(file, line, column) + ": " + message)
+  }
+
+  private[this]
+  def plevel(level: Level)(msg: => String): Unit = level match {
+    case ErrorLevel => logger.error(msg)
+    case WarningLevel => if (warnError) logger.error(msg) else logger.warn(msg)
+    case InfoLevel => logger.info(msg)
+  }
+
+  private[this]
+  def location(file: T, line: Option[Int], column: Option[Int]): String =
+    (file.name +
+     line.map(n => ":" + n + column.map(":" + _).getOrElse(""))
+         .getOrElse(""))
 }
