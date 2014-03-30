@@ -48,6 +48,8 @@ import sbt.inputTask
 import sbt.richFile
 import sbt.std.TaskStreams
 import sbt.ScopedKey
+import java.net.{URL, URLClassLoader}
+import scala.tools.nsc.util.ScalaClassLoader
 
 object ScalastylePlugin extends Plugin {
   import PluginKeys._ // scalastyle:ignore import.grouping underscore.import
@@ -55,11 +57,13 @@ object ScalastylePlugin extends Plugin {
   val Settings = Seq(
     scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
     config := file("scalastyle-config.xml"),
+    extraClasspath := file(""),
     failOnError := true,
     scalastyle <<= inputTask {
       (argTask: TaskKey[Seq[String]]) => {
-        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
-          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams, extraClasspath) map {
+          (args, config, failOnError, sourceDir, output, streams, cp) =>
+            Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams, cp)
         }
       }
     },
@@ -79,14 +83,16 @@ object PluginKeys {
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
+  lazy val extraClasspath = SettingKey[File]("scalastyle-extra-classpath")
 }
 
 object Tasks {
   def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, sourceDir: File, output: File,
-    streams: TaskStreams[ScopedKey[_]]): Unit = {
+    streams: TaskStreams[ScopedKey[_]], extraClassPath: File): Unit = {
     val logger = streams.log
     if (config.exists) {
-      val messages = runScalastyle(config, sourceDir)
+      logger.info("Extra classpath:" + extraClassPath.toString)
+      val messages = runScalastyle(config, sourceDir, extraClassPath)
 
       saveToXml(messages, output.absolutePath)
 
@@ -117,9 +123,11 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, sourceDir: File) = {
+  private[this] def runScalastyle(config: File, sourceDir: File, extraClasses: File) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
+    val b = ScalaClassLoader.fromURLs(Seq(extraClasses.toURI.toURL), this.getClass.getClassLoader)
+    val a = b.loadClass(classOf[ScalastyleChecker[FileSpec]].getCanonicalName)
+    a.newInstance().asInstanceOf[ScalastyleChecker[FileSpec]].checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
   }
 
   private[this] def printResults(logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
