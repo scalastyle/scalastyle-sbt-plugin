@@ -6,31 +6,45 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.4.0"
+//version := "0.4.0"
 
-publishMavenStyle := true
+//import com.typesafe.sbt.SbtGit._
 
-resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+versionWithGit
 
-resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+git.baseVersion := "0.4.0"
 
-publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
+publishMavenStyle := false
+
+seq(bintrayPublishSettings:_*)
+
+bintray.Keys.repository in bintray.Keys.bintray := "sbt-plugins"
+
+bintray.Keys.bintrayOrganization in bintray.Keys.bintray := Some("scalastyle")
+
+licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
+
+//resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+
+//resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+
+//publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
   "org.scalastyle" %% "scalastyle" % "0.4.0"
 )
 
-publishTo <<= version { (v: String) =>
-  val nexus = "https://oss.sonatype.org/"
-  if (v.trim.endsWith("SNAPSHOT")) 
-    Some("snapshots" at nexus + "content/repositories/snapshots") 
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+//publishTo <<= version { (v: String) =>
+//  val nexus = "https://oss.sonatype.org/"
+//  if (v.trim.endsWith("SNAPSHOT")) 
+//    Some("snapshots" at nexus + "content/repositories/snapshots") 
+//  else
+//    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+//}
 
 publishArtifact in Test := false
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+//credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
 pomIncludeRepository := { _ => false }
 
