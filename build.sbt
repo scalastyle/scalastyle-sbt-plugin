@@ -12,7 +12,7 @@ name := "scalastyle-sbt-plugin"
 
 versionWithGit
 
-git.baseVersion := "0.4.0"
+git.baseVersion := "0.5.0"
 
 publishMavenStyle := false
 
@@ -31,7 +31,7 @@ licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"
 //publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.4.0"
+  "org.scalastyle" %% "scalastyle" % "0.5.0-SNAPSHOT"
 )
 
 //publishTo <<= version { (v: String) =>
