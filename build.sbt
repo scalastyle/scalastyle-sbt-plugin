@@ -24,7 +24,7 @@ bintray.Keys.bintrayOrganization in bintray.Keys.bintray := Some("scalastyle")
 
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 
-//resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 
 //resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
