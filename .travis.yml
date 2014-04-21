@@ -1,0 +1,6 @@
+language: scala
+script:
+   - sbt ++$TRAVIS_SCALA_VERSION scripted
+jdk:
+   - oraclejdk7
+   - openjdk7
