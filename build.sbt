@@ -28,10 +28,12 @@ resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositor
 
 //resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
+resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
+
 //publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.5.0-SNAPSHOT"
+  "org.scalastyle" %% "scalastyle" % "0.5.0"
 )
 
 //publishTo <<= version { (v: String) =>

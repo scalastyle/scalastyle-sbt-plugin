@@ -48,6 +48,7 @@ import sbt.inputTask
 import sbt.richFile
 import sbt.std.TaskStreams
 import sbt.ScopedKey
+import com.typesafe.config.ConfigFactory
 
 object ScalastylePlugin extends Plugin {
   import PluginKeys._ // scalastyle:ignore import.grouping underscore.import
@@ -196,7 +197,7 @@ class SbtLogOutput[T <: FileSpec](logger: Logger, warnError: Boolean = false)
     Level, ErrorLevel, WarningLevel, InfoLevel, MessageHelper
   }
 
-  private val messageHelper = new MessageHelper(this.getClass().getClassLoader())
+  private val messageHelper = new MessageHelper(ConfigFactory.load())
 
   override def message(m: Message[T]): Unit = m match {
     case StartWork() => logger.verbose("Starting scalastyle")
@@ -205,7 +206,7 @@ class SbtLogOutput[T <: FileSpec](logger: Logger, warnError: Boolean = false)
     case EndFile(file) => logger.verbose("end file " + file)
     case StyleError(file, clazz, key, level, args, line, column, customMessage) =>
       plevel(level)(location(file, line, column) + ": " +
-          Output.findMessage(messageHelper, clazz, key, args, customMessage))
+          Output.findMessage(messageHelper, key, args, customMessage))
     case StyleException(file, clazz, message, stacktrace, line, column) =>
       logger.error(location(file, line, column) + ": " + message)
   }

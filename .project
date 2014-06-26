@@ -1,24 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>scalastyle-sbt-plugin</name>
-	<comment></comment>
-	<projects>
-	</projects>
-	<buildSpec>
-		<buildCommand>
-			<name>org.scala-ide.sdt.core.scalabuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-		<buildCommand>
-			<name>org.scalastyle.scalastyleplugin.core.ScalastyleBuilder</name>
-			<arguments>
-			</arguments>
-		</buildCommand>
-	</buildSpec>
-	<natures>
-		<nature>org.scala-ide.sdt.core.scalanature</nature>
-		<nature>org.eclipse.jdt.core.javanature</nature>
-		<nature>org.scalastyle.scalastyleplugin.core.ScalastyleNature</nature>
-	</natures>
+  <name>scalastyle-sbt-plugin</name>
+  <buildSpec>
+    <buildCommand>
+      <name>org.scala-ide.sdt.core.scalabuilder</name>
+    </buildCommand>
+  </buildSpec>
+  <natures>
+    <nature>org.scala-ide.sdt.core.scalanature</nature>
+    <nature>org.eclipse.jdt.core.javanature</nature>
+  </natures>
+  <linkedResources> </linkedResources>
 </projectDescription>
