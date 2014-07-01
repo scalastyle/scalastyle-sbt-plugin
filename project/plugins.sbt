@@ -1,6 +1,6 @@
-// resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/releases/"
 
-//addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.3.3-SNAPSHOT" changing())
+addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.5.0")
 
 resolvers += "jgit-repo" at "http://download.eclipse.org/jgit/maven"
 
