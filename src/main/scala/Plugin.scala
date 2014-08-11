@@ -91,6 +91,14 @@ object Tasks {
     streams: TaskStreams[ScopedKey[_]], configUrl: String): Unit = {
     val logger = streams.log
 
+    def onHasErrors(message: String): Unit = {
+      if (failOnError) {
+        error(message)
+      } else {
+        logger.error(message)
+      }
+    }
+
     def doScalastyleWithConfig(config: File): Unit = {
       val messages = runScalastyle(config, sourceDir)
 
@@ -100,14 +108,6 @@ object Tasks {
       val result = printResults(logger, messages, quiet = args.exists(_ == "q"),
                                 warnError = warnError)
       logger.success("created: %s".format(target))
-
-      def onHasErrors(message: String): Unit = {
-        if (failOnError) {
-          error(message)
-        } else {
-          logger.error(message)
-        }
-      }
 
       if (result.errors > 0) {
         onHasErrors("exists error")
@@ -120,8 +120,12 @@ object Tasks {
       doScalastyleWithConfig(configFile)
     } else {
       IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
-        Process.apply(tempConfigFile) #< url(configUrl) ! logger
-        doScalastyleWithConfig(tempConfigFile)
+        try {
+          Process.apply(tempConfigFile) #< url(configUrl) ! logger
+          doScalastyleWithConfig(tempConfigFile)
+        } catch {
+          case ex: Exception => onHasErrors(s"Unable to download remote config because of an error: $ex")
+        }
       })
     }
   }
