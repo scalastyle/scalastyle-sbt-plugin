@@ -38,6 +38,7 @@ import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
 import sbt.Plugin
+import sbt.Process
 import sbt.Project
 import sbt.Scoped.t3ToTable3
 import sbt.Scoped.t6ToTable6
@@ -47,6 +48,7 @@ import sbt.file
 import sbt.inputTask
 import sbt.richFile
 import sbt.std.TaskStreams
+import sbt.url
 import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 
@@ -56,11 +58,12 @@ object ScalastylePlugin extends Plugin {
   val Settings = Seq(
     scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
     config := file("scalastyle-config.xml"),
+    scalastyleConfigUrl := "https://raw.githubusercontent.com/scalastyle/scalastyle-sbt-plugin/master/scalastyle-config.xml",
     failOnError := true,
     scalastyle <<= inputTask {
       (argTask: TaskKey[Seq[String]]) => {
-        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
-          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams, scalastyleConfigUrl) map {
+          (args, config, failOnError, sourceDir, output, streams, scalastyleConfigUrl) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams, scalastyleConfigUrl)
         }
       }
     },
@@ -80,13 +83,15 @@ object PluginKeys {
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
+  lazy val scalastyleConfigUrl = SettingKey[String]("URL for fetching a remote scalastyle-config.xml")
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, sourceDir: File, output: File,
-    streams: TaskStreams[ScopedKey[_]]): Unit = {
+  def doScalastyle(args: Seq[String], configFile: File, failOnError: Boolean, sourceDir: File, output: File,
+    streams: TaskStreams[ScopedKey[_]], configUrl: String): Unit = {
     val logger = streams.log
-    if (config.exists) {
+
+    def doScalastyleWithConfig(config: File): Unit = {
       val messages = runScalastyle(config, sourceDir)
 
       saveToXml(messages, output.absolutePath)
@@ -109,8 +114,15 @@ object Tasks {
       } else if (warnError && result.warnings > 0) {
         onHasErrors("exists warning")
       }
+    }
+
+    if (configFile.exists) {
+      doScalastyleWithConfig(configFile)
     } else {
-      sys.error("not exists: %s".format(config))
+      IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
+        Process.apply(tempConfigFile) #< url(configUrl) ! logger
+        doScalastyleWithConfig(tempConfigFile)
+      })
     }
   }
 
