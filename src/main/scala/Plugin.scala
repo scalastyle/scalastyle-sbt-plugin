@@ -122,10 +122,10 @@ object Tasks {
       IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
         try {
           Process.apply(tempConfigFile) #< url(configUrl) ! logger
-          doScalastyleWithConfig(tempConfigFile)
         } catch {
           case ex: Exception => onHasErrors(s"Unable to download remote config because of an error: $ex")
         }
+        doScalastyleWithConfig(tempConfigFile)
       })
     }
   }
