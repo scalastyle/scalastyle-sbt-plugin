@@ -38,6 +38,7 @@ import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
 import sbt.Plugin
+import sbt.Process
 import sbt.Project
 import sbt.Scoped.t3ToTable3
 import sbt.Scoped.t6ToTable6
@@ -47,6 +48,7 @@ import sbt.file
 import sbt.inputTask
 import sbt.richFile
 import sbt.std.TaskStreams
+import sbt.url
 import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 
@@ -56,11 +58,12 @@ object ScalastylePlugin extends Plugin {
   val Settings = Seq(
     scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
     config := file("scalastyle-config.xml"),
+    scalastyleConfigUrl := None,
     failOnError := true,
     scalastyle <<= inputTask {
       (argTask: TaskKey[Seq[String]]) => {
-        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
-          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams, scalastyleConfigUrl) map {
+          (args, config, failOnError, sourceDir, output, streams, scalastyleConfigUrl) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams, scalastyleConfigUrl)
         }
       }
     },
@@ -80,13 +83,23 @@ object PluginKeys {
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
+  lazy val scalastyleConfigUrl = SettingKey[Option[String]]("URL for fetching a remote scalastyle-config.xml")
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, sourceDir: File, output: File,
-    streams: TaskStreams[ScopedKey[_]]): Unit = {
+  def doScalastyle(args: Seq[String], configFile: File, failOnError: Boolean, sourceDir: File, output: File,
+    streams: TaskStreams[ScopedKey[_]], configUrl: Option[String]): Unit = {
     val logger = streams.log
-    if (config.exists) {
+
+    def onHasErrors(message: String): Unit = {
+      if (failOnError) {
+        error(message)
+      } else {
+        logger.error(message)
+      }
+    }
+
+    def doScalastyleWithConfig(config: File): Unit = {
       val messages = runScalastyle(config, sourceDir)
 
       saveToXml(messages, output.absolutePath)
@@ -96,21 +109,27 @@ object Tasks {
                                 warnError = warnError)
       logger.success("created: %s".format(target))
 
-      def onHasErrors(message: String): Unit = {
-        if (failOnError) {
-          error(message)
-        } else {
-          logger.error(message)
-        }
-      }
-
       if (result.errors > 0) {
         onHasErrors("exists error")
       } else if (warnError && result.warnings > 0) {
         onHasErrors("exists warning")
       }
-    } else {
-      sys.error("not exists: %s".format(config))
+    }
+
+    if (configFile.exists) {
+      doScalastyleWithConfig(configFile)
+    } else configUrl match {
+      case Some(confUrl) => {
+        IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
+          try {
+            Process.apply(tempConfigFile) #< url(confUrl) ! logger
+          } catch {
+            case ex: Exception => onHasErrors(s"Unable to download remote config because of an error: $ex")
+          }
+          doScalastyleWithConfig(tempConfigFile)
+        })
+      }
+      case None => onHasErrors("Cannot find config file. Add scalastyle-config.xml to your project or set org.scalastyle.sbt.PluginKeys.scalastyleConfigUrl in your Build.")
     }
   }
 
