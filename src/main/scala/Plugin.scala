@@ -58,7 +58,7 @@ object ScalastylePlugin extends Plugin {
   val Settings = Seq(
     scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
     config := file("scalastyle-config.xml"),
-    scalastyleConfigUrl := "https://raw.githubusercontent.com/scalastyle/scalastyle-sbt-plugin/master/scalastyle-config.xml",
+    scalastyleConfigUrl := None,
     failOnError := true,
     scalastyle <<= inputTask {
       (argTask: TaskKey[Seq[String]]) => {
@@ -83,12 +83,12 @@ object PluginKeys {
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
-  lazy val scalastyleConfigUrl = SettingKey[String]("URL for fetching a remote scalastyle-config.xml")
+  lazy val scalastyleConfigUrl = SettingKey[Option[String]]("URL for fetching a remote scalastyle-config.xml")
 }
 
 object Tasks {
   def doScalastyle(args: Seq[String], configFile: File, failOnError: Boolean, sourceDir: File, output: File,
-    streams: TaskStreams[ScopedKey[_]], configUrl: String): Unit = {
+    streams: TaskStreams[ScopedKey[_]], configUrl: Option[String]): Unit = {
     val logger = streams.log
 
     def onHasErrors(message: String): Unit = {
@@ -118,15 +118,18 @@ object Tasks {
 
     if (configFile.exists) {
       doScalastyleWithConfig(configFile)
-    } else {
-      IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
-        try {
-          Process.apply(tempConfigFile) #< url(configUrl) ! logger
-        } catch {
-          case ex: Exception => onHasErrors(s"Unable to download remote config because of an error: $ex")
-        }
-        doScalastyleWithConfig(tempConfigFile)
-      })
+    } else configUrl match {
+      case Some(confUrl) => {
+        IO.withTemporaryFile("tmp-scalastyle-config", ".xml")((tempConfigFile: File) => {
+          try {
+            Process.apply(tempConfigFile) #< url(confUrl) ! logger
+          } catch {
+            case ex: Exception => onHasErrors(s"Unable to download remote config because of an error: $ex")
+          }
+          doScalastyleWithConfig(tempConfigFile)
+        })
+      }
+      case None => onHasErrors("Cannot find config file. Add scalastyle-config.xml to your project or set org.scalastyle.sbt.PluginKeys.scalastyleConfigUrl in your Build.")
     }
   }
 
