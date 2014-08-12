@@ -26,3 +26,16 @@ The result file is `target/scalastyle-result.xml` (CheckStyle compatible format)
 Scalastyle Configuration file is `./scalastyle-config.xml` by default.
 To generate default configuration file, by typing `sbt scalastyle-generate-config`.
 
+### Remote Configuration Files
+
+If you want to use a remote configuration file, specify `scalastyleConfigUrl` (an `Option[String]`) in your build:
+
+    import org.scalastyle.sbt.ScalastylePlugin
+    import org.scalastyle.sbt.PluginKeys.scalastyleConfigUrl
+
+    lazy val mySettings = ScalastylePlugin.Settings ++ Seq(
+      scalastyleConfigUrl := Option("https://raw.githubusercontent.com/scalastyle/scalastyle-sbt-plugin/master/scalastyle-config.xml")
+    )
+
+Now this config will be used as long as you do not have a local `scalastyle-config.xml`. (If you do, that will be used instead.)
+
