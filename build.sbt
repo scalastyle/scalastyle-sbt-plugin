@@ -6,7 +6,7 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.5.0"
+version := "0.6.0-SNAPSHOT"
 
 //import com.typesafe.sbt.SbtGit._
 
@@ -28,12 +28,12 @@ resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositor
 
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
-//resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
+resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
 
 //publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.5.0"
+  "org.scalastyle" %% "scalastyle" % "0.6.0-SNAPSHOT"
 )
 
 publishTo <<= version { (v: String) =>

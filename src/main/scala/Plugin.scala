@@ -49,6 +49,7 @@ import sbt.richFile
 import sbt.std.TaskStreams
 import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
+import com.typesafe.config.Config
 
 object ScalastylePlugin extends Plugin {
   import PluginKeys._ // scalastyle:ignore import.grouping underscore.import
@@ -87,18 +88,20 @@ object Tasks {
     streams: TaskStreams[ScopedKey[_]]): Unit = {
     val logger = streams.log
     if (config.exists) {
+      val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
+      //streams.log.error("messageConfig=" + messageConfig.root().render())
       val messages = runScalastyle(config, sourceDir)
 
-      saveToXml(messages, output.absolutePath)
+      saveToXml(messageConfig, messages, output.absolutePath)
 
       val warnError = args.exists(_ == "w")
-      val result = printResults(logger, messages, quiet = args.exists(_ == "q"),
+      val result = printResults(messageConfig, logger, messages, quiet = args.exists(_ == "q"),
                                 warnError = warnError)
       logger.success("created: %s".format(target))
 
       def onHasErrors(message: String): Unit = {
         if (failOnError) {
-          error(message)
+          sys.error(message)
         } else {
           logger.error(message)
         }
@@ -123,11 +126,11 @@ object Tasks {
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
   }
 
-  private[this] def printResults(logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
+  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
     def now: Long = new Date().getTime
     val start = now
     val outputResult =
-      new SbtLogOutput(logger, warnError = warnError).output(messages)
+      new SbtLogOutput(config, logger, warnError = warnError).output(messages)
     // scalastyle:off regex
     if (!quiet) {
       logger.info("Processed " + outputResult.files + " file(s)")
@@ -141,8 +144,8 @@ object Tasks {
     outputResult
   }
 
-  private[this] def saveToXml(messages: List[Message[FileSpec]], path: String)(implicit codec: Codec): Unit = {
-    XmlOutput.save(path, codec.charSet.toString, messages)
+  private[this] def saveToXml(config: Config, messages: List[Message[FileSpec]], path: String)(implicit codec: Codec): Unit = {
+    XmlOutput.save(config, path, codec.charSet.toString, messages)
   }
 
   private[this] implicit def enumToIterator[A](e: java.util.Enumeration[A]): Iterator[A] = new Iterator[A] {
@@ -190,23 +193,24 @@ object Tasks {
   * @todo factor with TextOutput from scalastyle Output.scala
   */
 private[sbt]
-class SbtLogOutput[T <: FileSpec](logger: Logger, warnError: Boolean = false)
+class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boolean = false)
     extends Output[T] {
   import org.scalastyle.{
     StartWork, EndWork, StartFile, EndFile, StyleError, StyleException,
     Level, ErrorLevel, WarningLevel, InfoLevel, MessageHelper
   }
 
-  private val messageHelper = new MessageHelper(ConfigFactory.load())
+  private val messageHelper = new MessageHelper(config)
 
   override def message(m: Message[T]): Unit = m match {
     case StartWork() => logger.verbose("Starting scalastyle")
     case EndWork() =>
     case StartFile(file) => logger.verbose("start file " + file)
     case EndFile(file) => logger.verbose("end file " + file)
-    case StyleError(file, clazz, key, level, args, line, column, customMessage) =>
+    case StyleError(file, clazz, key, level, args, line, column, customMessage) => {
       plevel(level)(location(file, line, column) + ": " +
           Output.findMessage(messageHelper, key, args, customMessage))
+    }
     case StyleException(file, clazz, message, stacktrace, line, column) =>
       logger.error(location(file, line, column) + ": " + message)
   }
