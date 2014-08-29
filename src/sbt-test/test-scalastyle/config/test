@@ -1,0 +1,4 @@
+# scalastyle alternative config file
+> clean
+> test:scalastyle
+> containsMessage
