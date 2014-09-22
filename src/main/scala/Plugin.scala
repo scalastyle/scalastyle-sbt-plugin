@@ -94,10 +94,12 @@ object Tasks {
 
       saveToXml(messageConfig, messages, output.absolutePath)
 
+      val quiet = args.exists(_ == "q")
       val warnError = args.exists(_ == "w")
-      val result = printResults(messageConfig, logger, messages, quiet = args.exists(_ == "q"),
-                                warnError = warnError)
-      logger.success("created: %s".format(target))
+      val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
+      if (!quiet) {
+        logger.success("created output: %s".format(output))
+      }
 
       def onHasErrors(message: String): Unit = {
         if (failOnError) {
@@ -108,12 +110,12 @@ object Tasks {
       }
 
       if (result.errors > 0) {
-        onHasErrors("exists error")
+        onHasErrors("errors exist")
       } else if (warnError && result.warnings > 0) {
-        onHasErrors("exists warning")
+        onHasErrors("warnings exist")
       }
     } else {
-      sys.error("not exists: %s".format(config))
+      sys.error("config does not exist: %s".format(config))
     }
   }
 
