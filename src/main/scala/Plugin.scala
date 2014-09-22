@@ -28,7 +28,9 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.Output
 import org.scalastyle.XmlOutput
+import sbt.Configuration
 import sbt.Compile
+import sbt.Test
 import sbt.ConfigKey.configurationToKey
 import sbt.File
 import sbt.IO
@@ -56,15 +58,12 @@ object ScalastylePlugin extends Plugin {
 
   val Settings = Seq(
     scalastyleTarget <<= target(_ / "scalastyle-result.xml"),
+    scalastyleTarget in Test <<= target(_ / "scalastyle-test-result.xml"),
     config := file("scalastyle-config.xml"),
+    config in Test := config.value,
     failOnError := true,
-    scalastyle <<= inputTask {
-      (argTask: TaskKey[Seq[String]]) => {
-        (argTask, config, failOnError, scalaSource in Compile, scalastyleTarget, streams) map {
-          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
-        }
-      }
-    },
+    scalastyle <<= scalastyleTask(Compile),
+    scalastyle in Test <<= scalastyleTask(Test),
     generateConfig <<= inputTask {
       (args: TaskKey[Seq[String]]) => {
         (args, config, streams) map {
@@ -73,6 +72,14 @@ object ScalastylePlugin extends Plugin {
       }
     }
   )
+
+  def scalastyleTask(conf: Configuration) = inputTask {
+    (argTask: TaskKey[Seq[String]]) => {
+        (argTask, config in conf, failOnError, scalaSource in conf, scalastyleTarget in conf, streams) map {
+          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        }
+      }
+  }
 }
 
 object PluginKeys {
