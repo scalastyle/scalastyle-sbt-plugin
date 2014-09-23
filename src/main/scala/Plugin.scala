@@ -17,6 +17,7 @@
 package org.scalastyle.sbt
 
 import java.util.Date
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import scala.io.Codec
@@ -40,6 +41,7 @@ import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
 import sbt.Plugin
+import sbt.Process
 import sbt.Project
 import sbt.Scoped.t3ToTable3
 import sbt.Scoped.t6ToTable6
@@ -49,6 +51,7 @@ import sbt.file
 import sbt.inputTask
 import sbt.richFile
 import sbt.std.TaskStreams
+import sbt.url
 import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
@@ -64,6 +67,8 @@ object ScalastylePlugin extends Plugin {
     failOnError := true,
     scalastyle <<= scalastyleTask(Compile),
     scalastyle in Test <<= scalastyleTask(Test),
+    scalastyleConfig := None,
+    scalastyleConfigUrlRefreshHours := 24,
     generateConfig <<= inputTask {
       (args: TaskKey[Seq[String]]) => {
         (args, config, streams) map {
@@ -75,8 +80,9 @@ object ScalastylePlugin extends Plugin {
 
   def scalastyleTask(conf: Configuration) = inputTask {
     (argTask: TaskKey[Seq[String]]) => {
-        (argTask, config in conf, failOnError, scalaSource in conf, scalastyleTarget in conf, streams) map {
-          (args, config, failOnError, sourceDir, output, streams) => Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams)
+        (argTask, config in conf, failOnError, scalaSource in conf, scalastyleTarget in conf, streams, scalastyleConfig, scalastyleConfigUrlRefreshHours) map {
+          (args, config, failOnError, sourceDir, output, streams, scalastyleConfig, scalastyleConfigUrlRefreshHours) =>
+            Tasks.doScalastyle(args, config, failOnError, sourceDir, output, streams, scalastyleConfig, scalastyleConfigUrlRefreshHours)
         }
       }
   }
@@ -88,15 +94,46 @@ object PluginKeys {
   lazy val config = SettingKey[File]("scalastyle-config")
   lazy val failOnError = SettingKey[Boolean]("scalastyle-fail-on-error")
   lazy val generateConfig = InputKey[Unit]("scalastyle-generate-config")
+  lazy val scalastyleConfig = SettingKey[Option[String]]("scalastyle-config.xml location")
+  lazy val scalastyleConfigUrlRefreshHours = SettingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, sourceDir: File, output: File,
-    streams: TaskStreams[ScopedKey[_]]): Unit = {
+  def doScalastyle(args: Seq[String], configFile: File, failOnError: Boolean, sourceDir: File, output: File, streams: TaskStreams[ScopedKey[_]],
+                   configLocation: Option[String], refreshTime: Integer): Unit = {
     val logger = streams.log
-    if (config.exists) {
+
+    def onHasErrors(message: String): Unit = {
+      if (failOnError) {
+        sys.error(message)
+      } else {
+        logger.error(message)
+      }
+    }
+
+    def getConfigFile(): File = {
+      configLocation match {
+        case Some(loc) => """^(https?)|(file):\/\/.*""".r.findFirstMatchIn(loc) match {
+          case Some(_) =>
+            val targetConfigFile = file("target/scalastyle-config.xml")
+            if (!targetConfigFile.exists || MILLISECONDS.toHours((new Date()).getTime - targetConfigFile.lastModified) >= refreshTime) {
+              try {
+                Process.apply(targetConfigFile) #< url(loc) ! logger
+              } catch {
+                case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
+              }
+            }
+            targetConfigFile
+          case None => file(loc)
+        }
+        case None => configFile
+      }
+    }
+
+    def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
+
       val messages = runScalastyle(config, sourceDir)
 
       saveToXml(messageConfig, messages, output.absolutePath)
@@ -108,21 +145,18 @@ object Tasks {
         logger.success("created output: %s".format(output))
       }
 
-      def onHasErrors(message: String): Unit = {
-        if (failOnError) {
-          sys.error(message)
-        } else {
-          logger.error(message)
-        }
-      }
-
       if (result.errors > 0) {
         onHasErrors("errors exist")
       } else if (warnError && result.warnings > 0) {
         onHasErrors("warnings exist")
       }
+    }
+
+    val configFileToUse = getConfigFile
+    if (configFileToUse.exists) {
+      doScalastyleWithConfig(configFileToUse)
     } else {
-      sys.error("config does not exist: %s".format(config))
+      sys.error("config does not exist: %s".format(configFileToUse))
     }
   }
 
