@@ -1,0 +1,5 @@
+# test:scalastyleGenerateConfig
+> clean
+$ delete test-scalastyle-config.xml
+> test:scalastyleGenerateConfig
+$ exists test-scalastyle-config.xml

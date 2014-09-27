@@ -1,5 +1,5 @@
-# scalastyle generate config
+# scalastyleGenerateConfig
 > clean
 $ delete scalastyle-config.xml
-> scalastyle-generate-config
+> scalastyleGenerateConfig
 $ exists scalastyle-config.xml

@@ -1,0 +1,3 @@
+# failOnError = false, does not fail with error
+> clean
+> test:scalastyle

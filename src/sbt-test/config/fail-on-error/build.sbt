@@ -1,6 +1,4 @@
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
-org.scalastyle.sbt.PluginKeys.failOnError := false
+scalastyleFailOnError := false
 
 version := "0.1"
  

@@ -1,10 +1,8 @@
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
 version := "0.1"
  
 scalaVersion := "2.10.0"
 
-org.scalastyle.sbt.PluginKeys.config in Test := file("scalastyle-test-config.xml")
+scalastyleConfig in Test := file("scalastyle-test-config.xml")
  
 val containsMessage = taskKey[Boolean]("contains message")
 

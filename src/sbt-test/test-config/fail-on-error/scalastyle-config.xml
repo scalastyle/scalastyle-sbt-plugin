@@ -1,0 +1,13 @@
+<scalastyle>
+ <name>Scalastyle standard configuration</name>
+ <check level="error" class="org.scalastyle.file.FileLengthChecker" enabled="true">
+  <parameters>
+   <parameter name="maxFileLength"><![CDATA[5]]></parameter>
+  </parameters>
+ </check>
+ <check level="warning" class="org.scalastyle.scalariform.ObjectNamesChecker" enabled="true">
+  <parameters>
+   <parameter name="regex"><![CDATA[[A-Z][A-Za-z]*]]></parameter>
+  </parameters>
+ </check>
+</scalastyle>

@@ -1,6 +1,4 @@
-org.scalastyle.sbt.ScalastylePlugin.Settings
-
-org.scalastyle.sbt.PluginKeys.config := file("alternative-config.xml")
+scalastyleConfig := file("alternative-config.xml")
 
 version := "0.1"
  
