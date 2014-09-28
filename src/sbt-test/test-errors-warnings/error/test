@@ -1,0 +1,3 @@
+# scalastyle with errors => failure
+> clean
+-> test:scalastyle
