@@ -1,0 +1,4 @@
+# scalastyle url config file
+> clean
+> scalastyle
+$ exists target/scalastyle-config.xml

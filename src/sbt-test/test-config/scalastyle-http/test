@@ -1,0 +1,4 @@
+# scalastyle url config file
+> clean
+> test:scalastyle
+$ exists target/scalastyle-test-config.xml
