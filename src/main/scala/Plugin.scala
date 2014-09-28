@@ -56,6 +56,7 @@ import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
 import scala.language.implicitConversions
+import java.net.URL
 
 object ScalastylePlugin extends Plugin {
   import sbt.complete.DefaultParsers._
@@ -65,8 +66,10 @@ object ScalastylePlugin extends Plugin {
 
   val scalastyleTarget = settingKey[File]("scalastyle-target")
   val scalastyleConfig = settingKey[File]("scalastyle-config")
+  val scalastyleConfigUrl = settingKey[Option[URL]]("scalastyle-config-url")
   val scalastyleFailOnError = settingKey[Boolean]("scalastyle-fail-on-error")
   val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
+  val scalastyleConfigUrlCacheFile = settingKey[String]("scalastyle-config-cache-file")
 
   def rawScalastyleSettings(): Seq[sbt.Def.Setting[_]] =
     Seq(
@@ -74,13 +77,15 @@ object ScalastylePlugin extends Plugin {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
         val scalaSourceV = scalaSource.value
         val configV = scalastyleConfig.value
+        val configUrlV = scalastyleConfigUrl.value
         val streamsV = streams.value
         val failOnErrorV = scalastyleFailOnError.value
         val scalastyleTargetV = scalastyleTarget.value
         val configRefreshHoursV = scalastyleConfigRefreshHours.value
         val targetV = target.value
+        val configCacheFileV = scalastyleConfigUrlCacheFile.value
 
-        Tasks.doScalastyle(args, configV, failOnErrorV, scalaSourceV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalaSourceV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -93,6 +98,10 @@ object ScalastylePlugin extends Plugin {
     Seq(
       scalastyleConfig := file("scalastyle-config.xml"),
       (scalastyleConfig in Test) := (scalastyleConfig in scalastyle).value,
+      scalastyleConfigUrl := None,
+      (scalastyleConfigUrl in Test) := None,
+      scalastyleConfigUrlCacheFile := "scalastyle-config.xml",
+      (scalastyleConfigUrlCacheFile in Test) := "scalastyle-test-config.xml",
       scalastyleConfigRefreshHours := 24,
       (scalastyleConfigRefreshHours in Test) := (scalastyleConfigRefreshHours in scalastyle).value,
       scalastyleTarget := (target.value / "scalastyle-result.xml"),
@@ -102,18 +111,11 @@ object ScalastylePlugin extends Plugin {
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
-//    Seq(
-//      scalastyleGenerateConfig := {
-//        val streamsValue = streams.value
-//        val configValue = (scalastyleConfig in Compile).value
-//        Tasks.doGenerateConfig(configValue, streamsValue)
-//      }
-//    )
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, failOnError: Boolean, scalaSource: File, scalastyleTarget: File,
-                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File): Unit = {
+  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalaSource: File, scalastyleTarget: File,
+                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
 
     def onHasErrors(message: String): Unit = {
@@ -124,14 +126,14 @@ object Tasks {
       }
     }
 
-    def getConfigFile(targetDirectory: File, config: File): File = {
-      val s = config.getName()
-      """^(https?)|(file):\/\/.*""".r.findFirstMatchIn(s) match {
-        case Some(_) => {
-          val targetConfigFile = target / "scalastyle-config.xml"
+    def getConfigFile(targetDirectory: File, configUrl: Option[URL], config: File, outputFile: String): File = {
+      val f = configUrl match {
+        case Some(url) => {
+          val targetConfigFile = target / outputFile
           if (!targetConfigFile.exists || MILLISECONDS.toHours((new Date()).getTime - targetConfigFile.lastModified) >= refreshHours) {
             try {
-              Process.apply(targetConfigFile) #< url(s) ! logger
+              logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath())
+              Process.apply(targetConfigFile) #< url ! logger
             } catch {
               case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
             }
@@ -140,6 +142,10 @@ object Tasks {
         }
         case None => config
       }
+
+      logger.info("scalastyle using config " + f.getAbsolutePath())
+
+      f
     }
 
     def doScalastyleWithConfig(config: File): Unit = {
@@ -164,7 +170,7 @@ object Tasks {
       }
     }
 
-    val configFileToUse = getConfigFile(target, config)
+    val configFileToUse = getConfigFile(target, configUrl, config, urlCacheFile)
     if (configFileToUse.exists) {
       doScalastyleWithConfig(configFileToUse)
     } else {
