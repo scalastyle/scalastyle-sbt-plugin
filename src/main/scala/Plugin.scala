@@ -61,15 +61,15 @@ import java.net.URL
 object ScalastylePlugin extends Plugin {
   import sbt.complete.DefaultParsers._
 
-  val scalastyle = inputKey[Unit]("scalastyle")
-  val scalastyleGenerateConfig = taskKey[Unit]("scalastyle-generate-config")
+  val scalastyle = inputKey[Unit]("Run scalastyle on your code")
+  val scalastyleGenerateConfig = taskKey[Unit]("Generate a default configuration files for scalastyle")
 
-  val scalastyleTarget = settingKey[File]("scalastyle-target")
-  val scalastyleConfig = settingKey[File]("scalastyle-config")
-  val scalastyleConfigUrl = settingKey[Option[URL]]("scalastyle-config-url")
-  val scalastyleFailOnError = settingKey[Boolean]("scalastyle-fail-on-error")
+  val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
+  val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
+  val scalastyleConfigUrl = settingKey[Option[URL]]("Scalastyle configuration file as a URL")
+  val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
   val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
-  val scalastyleConfigUrlCacheFile = settingKey[String]("scalastyle-config-cache-file")
+  val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
 
   def rawScalastyleSettings(): Seq[sbt.Def.Setting[_]] =
     Seq(
