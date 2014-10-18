@@ -8,29 +8,13 @@ name := "scalastyle-sbt-plugin"
 
 version := "0.6.0-SNAPSHOT"
 
-//import com.typesafe.sbt.SbtGit._
-
-//versionWithGit
-
-//git.baseVersion := "0.5.0"
-
 publishMavenStyle := true
-
-//seq(bintrayPublishSettings:_*)
-
-//bintray.Keys.repository in bintray.Keys.bintray := "sbt-plugins"
-
-//bintray.Keys.bintrayOrganization in bintray.Keys.bintray := Some("scalastyle")
-
-//licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 
 resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
-resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
-
-//publishTo := Some("Sonatype Snapshots Nexus" at "https://oss.sonatype.org/content/repositories/snapshots")
+//resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
 
 libraryDependencies ++= Seq(
   "org.scalastyle" %% "scalastyle" % "0.6.0-SNAPSHOT"
