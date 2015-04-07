@@ -1,0 +1,5 @@
+# scalastyle from patch file
+> clean
+> scalastyle patch.diff
+# The errors appear in the file that is not included in the patch, so this is expected to fail
+-> containsMessage
