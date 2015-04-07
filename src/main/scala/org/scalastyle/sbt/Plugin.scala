@@ -16,11 +16,13 @@
 
 package org.scalastyle.sbt
 
+import java.io.File
 import java.util.Date
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
-import scala.io.Codec
+
+import scala.io.{Source, Codec}
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
 import org.scalastyle.Message
@@ -29,34 +31,20 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.Output
 import org.scalastyle.XmlOutput
-import sbt.Configuration
-import sbt.Compile
-import sbt.Test
+import sbt._
 import sbt.ConfigKey.configurationToKey
-import sbt.File
-import sbt.IO
-import sbt.inputKey
 import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
-import sbt.Logger
-import sbt.Plugin
-import sbt.Process
-import sbt.Project
 import sbt.Scoped.t3ToTable3
 import sbt.Scoped.t6ToTable6
-import sbt.settingKey
-import sbt.taskKey
-import sbt.file
-import sbt.inputTask
-import sbt.richFile
 import sbt.std.TaskStreams
-import sbt.url
-import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
 import scala.language.implicitConversions
 import java.net.URL
+
+import scala.util.matching.Regex
 
 object ScalastylePlugin extends Plugin {
   import sbt.complete.DefaultParsers._
@@ -70,6 +58,7 @@ object ScalastylePlugin extends Plugin {
   val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
   val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
   val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
+  val scalastyleDiffRegex = settingKey[Regex]("Regex used to extract file names from patch files")
 
   def rawScalastyleSettings(): Seq[sbt.Def.Setting[_]] =
     Seq(
@@ -84,8 +73,9 @@ object ScalastylePlugin extends Plugin {
         val configRefreshHoursV = scalastyleConfigRefreshHours.value
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
+        val diffRegex = scalastyleDiffRegex.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalaSourceV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalaSourceV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV, diffRegex)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -107,7 +97,9 @@ object ScalastylePlugin extends Plugin {
       scalastyleTarget := (target.value / "scalastyle-result.xml"),
       (scalastyleTarget in Test) := target.value / "scalastyle-test-result.xml",
       scalastyleFailOnError := true,
-      (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value
+      (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
+      scalastyleDiffRegex := "^[-+]{3}\\s[ab]/(.*scala)$".r,
+      (scalastyleDiffRegex in Test) := "^[-+]{3}\\s[ab]/(.*scala)$".r
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
@@ -115,7 +107,7 @@ object ScalastylePlugin extends Plugin {
 
 object Tasks {
   def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalaSource: File, scalastyleTarget: File,
-                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
+                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String, diffRegex: Regex): Unit = {
     val logger = streams.log
 
     def onHasErrors(message: String): Unit = {
@@ -151,8 +143,13 @@ object Tasks {
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
+      val filesFromPatch = args.find(new File(_).exists()) match {
+        case None => None
+        case Some(f) => val diffFile = new File(f)
+          Some(parseDiff(diffFile, scalaSource, diffRegex))
+      }
 
-      val messages = runScalastyle(config, scalaSource)
+      val messages = runScalastyle(config, filesFromPatch.getOrElse(Seq(scalaSource)))
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
@@ -182,9 +179,15 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, sourceDir: File) = {
+  private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess))
+  }
+
+  private[this] def parseDiff(diffFile: File, sourceDir: File, diffRegex: Regex): Seq[File] = {
+    val sourceRoot = sourceDir.getAbsolutePath
+    Source.fromFile(diffFile, "UTF-8").getLines().map(diffRegex.findFirstMatchIn(_)).flatten
+      .map(m => new File(m.group(1))).filter(file => file.getAbsolutePath.startsWith(sourceRoot) && file.exists()).toSeq.distinct
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {

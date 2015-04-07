@@ -1,0 +1,12 @@
+diff --git a/src/main/scala/hello.scala b/src/main/scala/hello.scala
+index 3cb4df3..cf34b91 100644
+--- a/src/main/scala/hello.scala
++++ b/src/main/scala/hello.scala
+@@ -3,6 +3,7 @@ object Main extends App {
+   println("hello")
+ }
+ 
++// foo
+ object foo {
+   println("hello")
+ }
