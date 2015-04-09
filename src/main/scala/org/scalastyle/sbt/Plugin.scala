@@ -117,6 +117,9 @@ object Tasks {
   def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalaSource: File, scalastyleTarget: File,
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
+    val quietArg = "q"
+    val warnErrorArg = "w"
+    val supportedArgs = Set(quietArg, warnErrorArg)
 
     def onHasErrors(message: String): Unit = {
       if (failOnError) {
@@ -151,7 +154,7 @@ object Tasks {
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
-      val filesToProcess = args.map(file).filter { f =>
+      val filesToProcess = args.filterNot(supportedArgs.contains).map(file).filter { f =>
         val validFile = f.exists() && f.getAbsolutePath.startsWith(scalaSource.getAbsolutePath)
         if (!validFile) logger.warn(s"File $f does not exist in project")
 
@@ -165,8 +168,8 @@ object Tasks {
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val quiet = args.exists(_ == "q")
-      val warnError = args.exists(_ == "w")
+      val quiet = args.contains(quietArg)
+      val warnError = args.contains(warnErrorArg)
       val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
       if (!quiet) {
         logger.success("created output: %s".format(target))
