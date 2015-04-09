@@ -151,8 +151,17 @@ object Tasks {
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
+      val filesToProcess = args.map(file).filter { f =>
+        val validFile = f.exists() && f.getAbsolutePath.startsWith(scalaSource.getAbsolutePath)
+        if (!validFile) logger.warn(s"File $f does not exist in project")
 
-      val messages = runScalastyle(config, scalaSource)
+        validFile
+      } match {
+        case Nil => Seq(scalaSource)
+        case files => files
+      }
+
+      val messages = runScalastyle(config, filesToProcess)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
@@ -182,9 +191,9 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, sourceDir: File) = {
+  private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {

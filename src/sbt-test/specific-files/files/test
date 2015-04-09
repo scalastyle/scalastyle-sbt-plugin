@@ -1,0 +1,4 @@
+# scalastyle on specific files
+> clean
+> scalastyle src/main/scala/Example.scala
+> containsMessage

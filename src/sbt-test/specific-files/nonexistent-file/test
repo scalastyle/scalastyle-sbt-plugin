@@ -1,0 +1,5 @@
+# scalastyle on specific files
+> clean
+# simulated typo
+> scalastyle src/main/scala/Eaxmple.scala
+> containsMessage
