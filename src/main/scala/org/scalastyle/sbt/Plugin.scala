@@ -118,6 +118,8 @@ object Tasks {
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
 
+    val quiet = args.exists(_ == "q")
+
     def onHasErrors(message: String): Unit = {
       if (failOnError) {
         sys.error(message)
@@ -143,7 +145,9 @@ object Tasks {
         case None => config
       }
 
-      logger.info("scalastyle using config " + f.getAbsolutePath())
+      if (!quiet) {
+        logger.info("scalastyle using config " + f.getAbsolutePath())
+      }
 
       f
     }
@@ -156,7 +160,6 @@ object Tasks {
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val quiet = args.exists(_ == "q")
       val warnError = args.exists(_ == "w")
       val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
       if (!quiet) {
