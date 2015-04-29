@@ -36,7 +36,7 @@ import sbt.ConfigKey.configurationToKey
 import sbt.File
 import sbt.IO
 import sbt.inputKey
-import sbt.Keys.scalaSource
+import sbt.Keys.sources
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
@@ -75,7 +75,7 @@ object ScalastylePlugin extends Plugin {
     Seq(
       scalastyle := {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val scalaSourceV = scalaSource.value
+        val sourcesV = sources.value.toList
         val configV = scalastyleConfig.value
         val configUrlV = scalastyleConfigUrl.value
         val streamsV = streams.value
@@ -85,7 +85,7 @@ object ScalastylePlugin extends Plugin {
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalaSourceV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, sourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -114,7 +114,7 @@ object ScalastylePlugin extends Plugin {
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalaSource: File, scalastyleTarget: File,
+  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, sources: List[File], scalastyleTarget: File,
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
 
@@ -152,7 +152,7 @@ object Tasks {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
 
-      val messages = runScalastyle(config, scalaSource)
+      val messages = runScalastyle(config, sources)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
@@ -182,9 +182,9 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, sourceDir: File) = {
+  private[this] def runScalastyle(config: File, sources: List[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, List(sourceDir)))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, sources))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
