@@ -121,6 +121,9 @@ object Tasks {
     val warnErrorArg = "w"
     val supportedArgs = Set(quietArg, warnErrorArg)
 
+    val quiet = args.contains(quietArg)
+    val warnError = args.contains(warnErrorArg)
+
     def onHasErrors(message: String): Unit = {
       if (failOnError) {
         sys.error(message)
@@ -146,7 +149,9 @@ object Tasks {
         case None => config
       }
 
-      logger.info("scalastyle using config " + f.getAbsolutePath())
+      if (!quiet) {
+        logger.info("scalastyle using config " + f.getAbsolutePath())
+      }
 
       f
     }
@@ -168,8 +173,6 @@ object Tasks {
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val quiet = args.contains(quietArg)
-      val warnError = args.contains(warnErrorArg)
       val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
       if (!quiet) {
         logger.success("created output: %s".format(target))
