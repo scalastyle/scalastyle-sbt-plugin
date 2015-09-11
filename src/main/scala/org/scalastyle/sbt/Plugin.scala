@@ -36,7 +36,7 @@ import sbt.ConfigKey.configurationToKey
 import sbt.File
 import sbt.IO
 import sbt.inputKey
-import sbt.Keys.sources
+import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
@@ -70,12 +70,13 @@ object ScalastylePlugin extends Plugin {
   val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
   val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
   val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
+  val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
 
   def rawScalastyleSettings(): Seq[sbt.Def.Setting[_]] =
     Seq(
       scalastyle := {
         val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val sourcesV = sources.value.toList
+        val scalastyleSourcesV = scalastyleSources.value
         val configV = scalastyleConfig.value
         val configUrlV = scalastyleConfigUrl.value
         val streamsV = streams.value
@@ -85,7 +86,7 @@ object ScalastylePlugin extends Plugin {
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, sourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -107,14 +108,16 @@ object ScalastylePlugin extends Plugin {
       scalastyleTarget := (target.value / "scalastyle-result.xml"),
       (scalastyleTarget in Test) := target.value / "scalastyle-test-result.xml",
       scalastyleFailOnError := true,
-      (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value
+      (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
+      scalastyleSources := Seq(scalaSource.value),
+      (scalastyleSources in Test) := (scalastyleSources in scalastyle).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, sources: List[File], scalastyleTarget: File,
+  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
 
@@ -152,7 +155,7 @@ object Tasks {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
 
-      val messages = runScalastyle(config, sources)
+      val messages = runScalastyle(config, scalastyleSources)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
@@ -182,9 +185,9 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, sources: List[File]) = {
+  private[this] def runScalastyle(config: File, scalastyleSources: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, sources))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, scalastyleSources.toList))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
