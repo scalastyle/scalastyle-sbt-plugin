@@ -109,8 +109,8 @@ object ScalastylePlugin extends Plugin {
       (scalastyleTarget in Test) := target.value / "scalastyle-test-result.xml",
       scalastyleFailOnError := true,
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
-      scalastyleSources := Seq(scalaSource.value),
-      (scalastyleSources in Test) := (scalastyleSources in scalastyle).value
+      scalastyleSources := Seq((scalaSource in Compile).value),
+      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
