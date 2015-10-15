@@ -5,3 +5,5 @@ project/project/target
 *.swp
 *.jar
 .cache
+.idea
+*.iml
