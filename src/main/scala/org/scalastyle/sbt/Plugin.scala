@@ -110,7 +110,7 @@ object ScalastylePlugin extends Plugin {
       scalastyleFailOnError := true,
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
       scalastyleSources := Seq((scalaSource in Compile).value),
-      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
+      (scalastyleSources in Test) := (scalastyleSources in scalastyle).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
@@ -120,8 +120,13 @@ object Tasks {
   def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
+    val quietArg = "q"
+    val warnErrorArg = "w"
+    val supportedArgs = Set(quietArg, warnErrorArg)
 
-    val quiet = args.exists(_ == "q")
+    val quiet = args.contains(quietArg)
+    val warnError = args.contains(warnErrorArg)
+    println("config=" + config)
 
     def onHasErrors(message: String): Unit = {
       if (failOnError) {
@@ -155,15 +160,29 @@ object Tasks {
       f
     }
 
+    def isInProject(sources: Seq[File])(f: File) = {
+        val validFile = f.exists() && sources.find(s => f.getAbsolutePath.startsWith(s.getAbsolutePath)).isDefined
+        if (!validFile) logger.warn(s"File $f does not exist in project")
+        validFile
+    }
+
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
+      System.out.println("args=" + args)
+      System.out.println("scalastyleSources=" + scalastyleSources)
 
-      val messages = runScalastyle(config, scalastyleSources)
+      val filesToProcess: Seq[File] = args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
+        case Nil => scalastyleSources
+        case files => files
+      }
+
+      println("filesToProcess=" + filesToProcess)
+      println("config=" + config)
+      val messages = runScalastyle(config, filesToProcess)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val warnError = args.exists(_ == "w")
       val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
       if (!quiet) {
         logger.success("created output: %s".format(target))
@@ -188,9 +207,9 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, scalastyleSources: Seq[File]) = {
+  private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, scalastyleSources.toList))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
