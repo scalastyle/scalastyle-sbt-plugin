@@ -110,7 +110,7 @@ object ScalastylePlugin extends Plugin {
       scalastyleFailOnError := true,
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
       scalastyleSources := Seq((scalaSource in Compile).value),
-      (scalastyleSources in Test) := Seq((scalaSource in Test).value
+      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
