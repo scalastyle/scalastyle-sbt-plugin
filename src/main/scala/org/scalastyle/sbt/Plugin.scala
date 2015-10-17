@@ -110,7 +110,7 @@ object ScalastylePlugin extends Plugin {
       scalastyleFailOnError := true,
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
       scalastyleSources := Seq((scalaSource in Compile).value),
-      (scalastyleSources in Test) := (scalastyleSources in scalastyle).value
+      (scalastyleSources in Test) := Seq((scalaSource in Test).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
@@ -126,7 +126,6 @@ object Tasks {
 
     val quiet = args.contains(quietArg)
     val warnError = args.contains(warnErrorArg)
-    println("config=" + config)
 
     def onHasErrors(message: String): Unit = {
       if (failOnError) {
@@ -169,16 +168,12 @@ object Tasks {
     def doScalastyleWithConfig(config: File): Unit = {
       val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
       //streams.log.error("messageConfig=" + messageConfig.root().render())
-      System.out.println("args=" + args)
-      System.out.println("scalastyleSources=" + scalastyleSources)
 
       val filesToProcess: Seq[File] = args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
         case Nil => scalastyleSources
         case files => files
       }
 
-      println("filesToProcess=" + filesToProcess)
-      println("config=" + config)
       val messages = runScalastyle(config, filesToProcess)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
@@ -209,7 +204,7 @@ object Tasks {
 
   private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
