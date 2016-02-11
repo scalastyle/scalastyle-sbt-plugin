@@ -40,7 +40,7 @@ import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
-import sbt.Plugin
+import sbt.AutoPlugin
 import sbt.Process
 import sbt.Project
 import sbt.Scoped.t3ToTable3
@@ -58,7 +58,7 @@ import com.typesafe.config.Config
 import scala.language.implicitConversions
 import java.net.URL
 
-object ScalastylePlugin extends Plugin {
+object ScalastylePlugin extends AutoPlugin {
   import sbt.complete.DefaultParsers._
 
   val scalastyle = inputKey[Unit]("Run scalastyle on your code")
@@ -94,6 +94,8 @@ object ScalastylePlugin extends Plugin {
         Tasks.doGenerateConfig(configValue, streamsValue)
       }
     )
+
+  override def requires = sbt.plugins.JvmPlugin
 
   override def projectSettings =
     Seq(
