@@ -8,6 +8,8 @@ name := "scalastyle-sbt-plugin"
 
 version := "0.9.0-SNAPSHOT"
 
+scalaVersion := "2.10.5"
+
 publishMavenStyle := true
 
 resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
@@ -17,13 +19,13 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 //resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.9.0-SNAPSHOT"
+  "org.scalastyle" %% "scalastyle" % "0.8.0"
 )
 
 publishTo <<= version { (v: String) =>
   val nexus = "https://oss.sonatype.org/"
-  if (v.trim.endsWith("SNAPSHOT")) 
-    Some("snapshots" at nexus + "content/repositories/snapshots") 
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }

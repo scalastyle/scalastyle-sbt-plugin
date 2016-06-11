@@ -1,5 +1,9 @@
+import org.scalastyle.sbt.ScalastylePlugin.settings._
+
+enablePlugins(ScalastylePlugin)
+
 scalastyleConfig := file("foo/scalastyle-config.xml")
 
 version := "0.1"
- 
+
 scalaVersion := "2.10.0"

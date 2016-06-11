@@ -20,6 +20,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
+
 import scala.io.Codec
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
@@ -29,177 +30,227 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.Output
 import org.scalastyle.XmlOutput
-import sbt.Configuration
-import sbt.Compile
-import sbt.Test
+import sbt._
+import sbt.Keys._
 import sbt.ConfigKey.configurationToKey
-import sbt.File
-import sbt.IO
-import sbt.inputKey
-import sbt.Keys.scalaSource
-import sbt.Keys.streams
-import sbt.Keys.target
-import sbt.Logger
-import sbt.Plugin
-import sbt.Process
-import sbt.Project
-import sbt.Scoped.t3ToTable3
-import sbt.Scoped.t6ToTable6
-import sbt.settingKey
-import sbt.taskKey
-import sbt.file
-import sbt.inputTask
-import sbt.richFile
-import sbt.std.TaskStreams
-import sbt.url
-import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
+
 import scala.language.implicitConversions
 import java.net.URL
 
-object ScalastylePlugin extends Plugin {
+case class ScalastyleContext(
+  configFile: File, configUrl : Option[URL], sourceFiles: Seq[File], targetFile: File,
+  failOnError : Boolean, refreshHours : Int, logger : Logger, args : Seq[String]
+) {
+  val quietArg = "q"
+  val warnErrorArg = "w"
+  val supportedArgs = Set(quietArg, warnErrorArg)
+  val quiet = args.contains(quietArg)
+  val warnError = args.contains(warnErrorArg)
+}
+
+case class Args(args: Seq[String])
+
+object ScalastylePlugin extends AutoPlugin {
   import sbt.complete.DefaultParsers._
 
   val scalastyle = inputKey[Unit]("Run scalastyle on your code")
+  val scalastyleConfigUpdate = inputKey[Unit]("Manually update your scalastyle config from URL (if configured)")
   val scalastyleGenerateConfig = taskKey[Unit]("Generate a default configuration files for scalastyle")
 
-  val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
-  val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
-  val scalastyleConfigUrl = settingKey[Option[URL]]("Scalastyle configuration file as a URL")
-  val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
-  val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
-  val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
-  val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
+  object settings {
+    val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
+    val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
+    val scalastyleConfigUrl = settingKey[Option[URL]]("Scalastyle configuration file as a URL")
+    val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
+    val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
+    val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
+  }
 
-  def rawScalastyleSettings(): Seq[sbt.Def.Setting[_]] =
+  /** The [[sbt.Setting]]s to add in the scope of each project that activates this AutoPlugin. */
+  private def settingDefaults : Seq[Setting[_]] = {
+    import settings._
+    Seq(
+      scalastyleConfig := (baseDirectory.value / "project" / "scalastyle-config.xml"),
+      scalastyleConfigUrl := None,
+      scalastyleConfigRefreshHours := 24,
+      scalastyleFailOnError := true,
+      scalastyleTarget := (target.value / "scalastyle-result.xml"),
+      scalastyleSources := Seq((scalaSource in Compile).value),
+      (scalastyleTarget in Test) := (target.value / "scalastyle-test-result.xml"),
+      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
+    )
+  }
+
+  private def scalastyleTaskSettings : Seq[Setting[_]] = {
+    import settings._
     Seq(
       scalastyle := {
-        val args: Seq[String] = spaceDelimited("<arg>").parsed
-        val scalastyleSourcesV = scalastyleSources.value
-        val configV = scalastyleConfig.value
-        val configUrlV = scalastyleConfigUrl.value
-        val streamsV = streams.value
-        val failOnErrorV = scalastyleFailOnError.value
-        val scalastyleTargetV = scalastyleTarget.value
-        val configRefreshHoursV = scalastyleConfigRefreshHours.value
-        val targetV = target.value
-        val configCacheFileV = scalastyleConfigUrlCacheFile.value
-
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        val context = ScalastyleContext(scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+          scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value,
+          streams.value.log, spaceDelimited("<arg>").parsed
+        )
+        streams.value.log.info(s"running doScalastyle($context)")
+        Tasks.doScalastyle(context)
       },
-      scalastyleGenerateConfig := {
-        val streamsValue = streams.value
-        val configValue = scalastyleConfig.value
-        Tasks.doGenerateConfig(configValue, streamsValue)
+      (scalastyle in Test) := {
+        val context = ScalastyleContext(
+          (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+          (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
+          (scalastyleConfigRefreshHours in Test).value, streams.value.log, spaceDelimited("<arg>").parsed
+        )
+        streams.value.log.info(s"running doScalastyle($context)")
+        Tasks.doScalastyle(context)
       }
     )
+  }
 
-  override def projectSettings =
+  private def updateTaskSettings : Seq[Setting[_]] = {
+    import settings._
     Seq(
-      scalastyleConfig := file("scalastyle-config.xml"),
-      (scalastyleConfig in Test) := (scalastyleConfig in scalastyle).value,
-      scalastyleConfigUrl := None,
-      (scalastyleConfigUrl in Test) := None,
-      scalastyleConfigUrlCacheFile := "scalastyle-config.xml",
-      (scalastyleConfigUrlCacheFile in Test) := "scalastyle-test-config.xml",
-      scalastyleConfigRefreshHours := 24,
-      (scalastyleConfigRefreshHours in Test) := (scalastyleConfigRefreshHours in scalastyle).value,
-      scalastyleTarget := (target.value / "scalastyle-result.xml"),
-      (scalastyleTarget in Test) := target.value / "scalastyle-test-result.xml",
-      scalastyleFailOnError := true,
-      (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
-      scalastyleSources := Seq((scalaSource in Compile).value),
-      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
-    ) ++
-    Project.inConfig(Compile)(rawScalastyleSettings()) ++
-    Project.inConfig(Test)(rawScalastyleSettings())
+      scalastyleConfigUpdate := {
+        Tasks.doScalastyleConfigUpdate(
+          ScalastyleContext(
+            scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+            scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value, streams.value.log,
+            spaceDelimited("<arg>").parsed
+          )
+        )
+      },
+      (scalastyleConfigUpdate in Test) := {
+        Tasks.doScalastyleConfigUpdate(
+          ScalastyleContext(
+            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+            (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
+            (scalastyleConfigRefreshHours in Test).value, streams.value.log, spaceDelimited("<arg>").parsed
+          )
+        )
+      }
+    )
+  }
+
+  private def generateTaskSettings : Seq[Setting[_]] = {
+    import settings._
+    Seq(
+      scalastyleGenerateConfig := {
+        Tasks.doGenerateConfig(
+          ScalastyleContext(
+            scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+            scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value, streams.value.log,
+            Seq.empty[String]
+          )
+        )
+      },
+      (scalastyleGenerateConfig in Test) := {
+        Tasks.doGenerateConfig(
+          ScalastyleContext(
+            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+            (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
+            (scalastyleConfigRefreshHours in Test).value, streams.value.log, Seq.empty[String]
+          )
+        )
+      }
+    )
+  }
+
+  override def projectSettings: Seq[Setting[_]] = {
+    settingDefaults ++ scalastyleTaskSettings ++ updateTaskSettings ++ generateTaskSettings
+  }
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
-                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
-    val logger = streams.log
-    val quietArg = "q"
-    val warnErrorArg = "w"
-    val supportedArgs = Set(quietArg, warnErrorArg)
 
-    val quiet = args.contains(quietArg)
-    val warnError = args.contains(warnErrorArg)
-
-    def onHasErrors(message: String): Unit = {
-      if (failOnError) {
-        sys.error(message)
-      } else {
-        logger.error(message)
-      }
-    }
-
-    def getConfigFile(targetDirectory: File, configUrl: Option[URL], config: File, outputFile: String): File = {
-      val f = configUrl match {
-        case Some(url) => {
-          val targetConfigFile = target / outputFile
-          if (!targetConfigFile.exists || MILLISECONDS.toHours((new Date()).getTime - targetConfigFile.lastModified) >= refreshHours) {
-            try {
-              logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath())
-              Process.apply(targetConfigFile) #< url ! logger
-            } catch {
-              case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
-            }
-          }
-          targetConfigFile
-        }
-        case None => config
-      }
-
-      if (!quiet) {
-        logger.info("scalastyle using config " + f.getAbsolutePath())
-      }
-
-      f
-    }
-
-    def isInProject(sources: Seq[File])(f: File) = {
-        val validFile = f.exists() && sources.find(s => f.getAbsolutePath.startsWith(s.getAbsolutePath)).isDefined
-        if (!validFile) logger.warn(s"File $f does not exist in project")
-        validFile
-    }
-
-    def doScalastyleWithConfig(config: File): Unit = {
-      val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
-      //streams.log.error("messageConfig=" + messageConfig.root().render())
-
-      val filesToProcess: Seq[File] = args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
-        case Nil => scalastyleSources
-        case files => files
-      }
-
-      val messages = runScalastyle(config, filesToProcess)
-
-      saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
-
-      val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
-      if (!quiet) {
-        logger.success("created output: %s".format(target))
-      }
-
-      if (result.errors > 0) {
-        onHasErrors("errors exist")
-      } else if (warnError && result.warnings > 0) {
-        onHasErrors("warnings exist")
-      }
-    }
-
-    val configFileToUse = getConfigFile(target, configUrl, config, urlCacheFile)
-    if (configFileToUse.exists) {
-      doScalastyleWithConfig(configFileToUse)
+  def onHasErrors(message: String)(implicit context : ScalastyleContext): Unit = {
+    if (context.failOnError) {
+      sys.error(message)
     } else {
-      sys.error("config does not exist: %s".format(configFileToUse))
+      context.logger.error(message)
     }
   }
 
-  def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit = {
-    getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
+  def doScalastyleConfigUpdate(implicit context : ScalastyleContext) : Unit = {
+    import context._
+    configUrl match  {
+      case Some(url) =>
+        try {
+          logger.info("downloading " + url + " to " + context.configFile.getAbsolutePath)
+          val process = Process.apply(configFile) #< url
+          process ! logger
+        } catch {
+          case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
+        }
+      case None =>
+        logger.info("Nothing to download. Set scalastyleConfigUrl to Some(\"http://yourhost/your/path\")")
+    }
+    ()
+  }
+
+  def getConfigFile(context : ScalastyleContext): File = {
+    import context._
+    configUrl.map { url: URL =>
+      logger.info("Checking url")
+      if (configFile.exists) {
+        if (MILLISECONDS.toHours((new Date()).getTime - configFile.lastModified) >= refreshHours) {
+          doScalastyleConfigUpdate(context)
+        } else {
+          logger.info("Not time to update config file from URL")
+        }
+      } else {
+        doScalastyleConfigUpdate(context)
+      }
+      if (!quiet) {
+        logger.info("scalastyle is using config " + configFile.getAbsolutePath)
+      }
+      configFile
+    } getOrElse { logger.info("no url, defaulting to config file") ; configFile }
+  }
+
+  def isInProject(sources: Seq[File], logger: Logger)(f: File) : Boolean = {
+    val validFile = f.exists() && sources.exists(s => f.getAbsolutePath.startsWith(s.getAbsolutePath))
+    if (!validFile) logger.warn(s"File $f does not exist in project")
+    validFile
+  }
+
+  def doScalastyleWithConfig(implicit context : ScalastyleContext): Unit = {
+    import context._
+    val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass.getClassLoader)
+    //streams.log.error("messageConfig=" + messageConfig.root().render())
+
+    val filesToProcess: Seq[File] = {
+      args.filterNot(supportedArgs.contains).map(file).filter(isInProject(sourceFiles,logger)) match {
+        case Nil => sourceFiles
+        case files => files
+      }
+    }
+
+    val messages : List[Message[FileSpec]] = runScalastyle(configFile, filesToProcess)
+
+    saveToXml(messageConfig, messages, targetFile.absolutePath)
+
+    val result = printResults(messageConfig, messages, context)
+    if (!quiet) {
+      logger.success("created output: %s".format(targetFile.getCanonicalPath))
+    }
+
+    if (result.errors > 0) {
+      onHasErrors("errors exist")
+    } else if (warnError && result.warnings > 0) {
+      onHasErrors("warnings exist")
+    }
+  }
+
+  def doScalastyle(context : ScalastyleContext) : Unit = {
+    getConfigFile(context)
+    if (context.configFile.exists) {
+      doScalastyleWithConfig(context)
+    } else {
+      sys.error("config file does not exist: %s".format(context.configFile.getCanonicalPath))
+    }
+  }
+
+  def doGenerateConfig(context: ScalastyleContext) : Unit = {
+    getFileFromJar(getClass.getResource("/scalastyle-config.xml"), context.configFile, context.logger)
   }
 
   private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
@@ -207,11 +258,14 @@ object Tasks {
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
   }
 
-  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
+  private[this] def printResults(
+    sbtConfig: Config, messages: List[Message[FileSpec]], context : ScalastyleContext
+  ) : OutputResult = {
+    import context._
     def now: Long = new Date().getTime
     val start = now
     val outputResult =
-      new SbtLogOutput(config, logger, warnError = warnError).output(messages)
+      new SbtLogOutput(sbtConfig, logger, warnError = warnError).output(messages)
     // scalastyle:off regex
     if (!quiet) {
       logger.info("Processed " + outputResult.files + " file(s)")
@@ -234,21 +288,19 @@ object Tasks {
     def hasNext: Boolean = e.hasMoreElements
   }
 
-  private[this] def getFileFromJar(url: java.net.URL, destination: String, logger: Logger): Unit = {
+  private[this] def getFileFromJar(url: java.net.URL, destination: File, logger: Logger): Unit = {
     def createFile(jarFile: JarFile, e: JarEntry, target: File): Unit = {
       IO.transfer(jarFile.getInputStream(e), target)
       logger.success("created: " + target)
     }
 
-    val target = file(destination)
-
-    if (safeToCreateFile(target)) {
+    if (safeToCreateFile(destination)) {
       url.openConnection match {
         case connection: java.net.JarURLConnection => {
           val entryName = connection.getEntryName
           val jarFile = connection.getJarFile
 
-          jarFile.entries.filter(_.getName == entryName).foreach { e => createFile(jarFile, e, target) }
+          jarFile.entries.filter(_.getName == entryName).foreach { e => createFile(jarFile, e, destination) }
         }
         case _ => // nothing
       }
@@ -258,10 +310,15 @@ object Tasks {
   private[this] def safeToCreateFile(file: File): Boolean = {
     def askUser: Boolean = {
       val question = "The file %s exists, do you want to overwrite it? (y/n): ".format(file.getPath)
-      scala.Console.readLine(question).toLowerCase.headOption match {
-        case Some('y') => true
-        case Some('n') => false
-        case _ => askUser
+      Option(scala.Console.readLine(question)) match {
+        case Some(answer) ⇒
+          answer.toLowerCase.headOption match {
+            case Some('y') => true
+            case Some('n') => false
+            case _ => askUser
+          }
+        case None ⇒
+          false
       }
     }
 
@@ -305,7 +362,7 @@ class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boo
 
   private[this]
   def location(file: T, line: Option[Int], column: Option[Int]): String =
-    (file.name +
+    file.name +
      line.map(n => ":" + n + column.map(":" + _).getOrElse(""))
-         .getOrElse(""))
+         .getOrElse("")
 }

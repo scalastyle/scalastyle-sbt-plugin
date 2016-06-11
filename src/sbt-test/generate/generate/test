@@ -1,5 +1,5 @@
 # scalastyleGenerateConfig
 > clean
-$ delete scalastyle-config.xml
+$ delete project/scalastyle-config.xml
 > scalastyleGenerateConfig
-$ exists scalastyle-config.xml
+$ exists project/scalastyle-config.xml
