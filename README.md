@@ -37,13 +37,13 @@ in CheckStyle compatible format.
 # Configuring The Plugin
 The plugin can be configured as follows:
 
-## scalastyleTarget File
+### scalastyleTarget : File
 * Specifies the location of an XML file receives the Scalastyle report. Default value is `target/scalastyle-result.xml`
 
-## scalastyleConfig	File
+### scalastyleConfig	: File
 * Specifies the location fo the	Scalastyle configuration. Default value is `project/scalastyle-config.xml`
 
-## scalastyleConfigURL Option[URL]
+### scalastyleConfigURL : Option[URL]
 * Optionally provides a URL for the configuration file.
 * If this is `None` (the default), the Scalastyle configuration is expected to be provided in `scalstyleConfig`
 * If this is `Some(url)`, the Scalastyle configuration is downloaded from the URL provided.
@@ -52,11 +52,11 @@ The plugin can be configured as follows:
  of the http request or ssh authentication then `scalastyleConfigUrl` will not suffice. A work around is to define 
  your own update task and make scalastyle depend on it in your build.sbt or Build.scala.
  
-## scalastyleConfigRefreshHours	Integer	
+### scalastyleConfigRefreshHours	: Integer	
 * If scalastyleConfigUrl is set, refresh it after this number of hours. 
 * Default value is 24.
 
-## scalastyleFailOnError	Boolean	
+### scalastyleFailOnError	: Boolean	
 * If true, the scalastyle task fails if any messages at error level are output. Default value is false.
 
 # Manual Update
