@@ -91,7 +91,7 @@ object ScalastylePlugin extends AutoPlugin {
           scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value,
           streams.value.log, spaceDelimited("<arg>").parsed
         )
-        streams.value.log.info(s"running doScalastyle($context)")
+        // streams.value.log.info(s"running doScalastyle($context)")
         Tasks.doScalastyle(context)
       },
       (scalastyle in Test) := {
@@ -100,7 +100,7 @@ object ScalastylePlugin extends AutoPlugin {
           (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
           (scalastyleConfigRefreshHours in Test).value, streams.value.log, spaceDelimited("<arg>").parsed
         )
-        streams.value.log.info(s"running doScalastyle($context)")
+        // streams.value.log.info(s"running doScalastyle($context)")
         Tasks.doScalastyle(context)
       }
     )
