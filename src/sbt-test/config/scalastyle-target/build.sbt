@@ -1,3 +1,5 @@
+enablePlugins(org.scalastyle.sbt.ScalastylePlugin)
+
 scalastyleTarget := file("target/scalastyle-output.xml")
 
 version := "0.1"
