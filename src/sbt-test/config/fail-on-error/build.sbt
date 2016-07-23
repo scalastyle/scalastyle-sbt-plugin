@@ -1,3 +1,5 @@
+val p = (project in file(".")).enablePlugins(ScalastylePlugin)
+
 scalastyleFailOnError := false
 
 version := "0.1"
