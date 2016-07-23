@@ -6,7 +6,7 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.8.0"
+version := "0.8.1"
 
 publishMavenStyle := true
 
