@@ -1,5 +1,3 @@
-enablePlugins(org.scalastyle.sbt.ScalastylePlugin)
-
 scalastyleConfig := file("scalastyle-config.xml")
 
 (scalastyleConfig in Test) := file("test-scalastyle-config.xml")

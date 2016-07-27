@@ -20,6 +20,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
+
 import scala.io.Codec
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
@@ -41,6 +42,8 @@ import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
 import sbt.AutoPlugin
+import sbt.Plugins
+import sbt.PluginTrigger
 import sbt.Process
 import sbt.Project
 import sbt.Scoped.t3ToTable3
@@ -55,6 +58,7 @@ import sbt.url
 import sbt.ScopedKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
+
 import scala.language.implicitConversions
 import java.net.URL
 
@@ -99,9 +103,11 @@ object ScalastylePlugin extends AutoPlugin {
       }
     )
 
-  override def requires = sbt.plugins.JvmPlugin
+  override def requires: Plugins = sbt.plugins.JvmPlugin
 
-  override def projectSettings =
+  override def trigger: PluginTrigger = allRequirements
+
+  override def projectSettings: Seq[sbt.Def.Setting[_]] =
     Seq(
       scalastyleConfig := file("scalastyle-config.xml"),
       (scalastyleConfig in Test) := (scalastyleConfig in scalastyle).value,

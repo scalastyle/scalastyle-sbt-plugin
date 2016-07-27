@@ -1,5 +1,3 @@
-enablePlugins(org.scalastyle.sbt.ScalastylePlugin)
-
 scalastyleConfig := file("alternative-config.xml")
 
 version := "0.1"

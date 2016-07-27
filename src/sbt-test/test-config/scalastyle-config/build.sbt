@@ -1,5 +1,3 @@
-enablePlugins(org.scalastyle.sbt.ScalastylePlugin)
-
 (scalastyleConfig in Test) := file("gggalternative-config.xml")
 
 version := "0.1"

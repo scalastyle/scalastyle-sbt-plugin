@@ -1,5 +1,3 @@
-enablePlugins(org.scalastyle.sbt.ScalastylePlugin)
-
 (scalastyleFailOnError in Test) := false
 
 version := "0.1"
