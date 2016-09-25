@@ -1,3 +1,5 @@
+val p = (project in file(".")).enablePlugins(ScalastylePlugin)
+
 scalastyleConfig := file("scalastyle-config.xml")
 
 (scalastyleConfig in Test) := file("test-scalastyle-config.xml")
