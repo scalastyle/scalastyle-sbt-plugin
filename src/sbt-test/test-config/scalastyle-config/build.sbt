@@ -1,4 +1,4 @@
-(scalastyleConfig in Test) := file("gggalternative-config.xml")
+(scalastyleConfigFile in Test) := file("gggalternative-config.xml")
 
 version := "0.1"
  

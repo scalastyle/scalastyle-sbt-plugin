@@ -1,4 +1,4 @@
-scalastyleConfig := file("alternative-config.xml")
+scalastyleConfigFile := file("alternative-config.xml")
 
 version := "0.1"
  
