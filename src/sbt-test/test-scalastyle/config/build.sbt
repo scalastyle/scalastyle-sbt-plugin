@@ -2,7 +2,7 @@ version := "0.1"
  
 scalaVersion := "2.10.0"
 
-scalastyleConfig in Test := file("scalastyle-test-config.xml")
+scalastyleConfigFile in Test := file("scalastyle-test-config.xml")
  
 val containsMessage = taskKey[Boolean]("contains message")
 
