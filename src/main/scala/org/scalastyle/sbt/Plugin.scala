@@ -20,8 +20,8 @@ import java.util.Date
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
-
 import scala.io.Codec
+
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
 import org.scalastyle.Message
@@ -35,12 +35,12 @@ import sbt.Keys._
 import sbt.ConfigKey.configurationToKey
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.Config
-
 import scala.language.implicitConversions
 import java.net.URL
 
 case class ScalastyleContext(
-  configFile: File, configUrl : Option[URL], sourceFiles: Seq[File], targetFile: File,
+  configFile: File, configUrl : Option[URL], sourceFiles: Seq[File],
+  exclusions : Seq[String], targetFile: File,
   failOnError : Boolean, refreshHours : Int, logger : Logger, args : Seq[String]
 ) {
   val quietArg = "q"
@@ -66,6 +66,8 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
     val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
+    val scalastyleExclusions = settingKey[Seq[String]](
+      "Regex strings to match file names that should be excluded from checking")
   }
 
   /** The [[sbt.Setting]]s to add in the scope of each project that activates this AutoPlugin. */
@@ -79,7 +81,8 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleTarget := (target.value / "scalastyle-result.xml"),
       scalastyleSources := Seq((scalaSource in Compile).value),
       (scalastyleTarget in Test) := (target.value / "scalastyle-test-result.xml"),
-      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
+      (scalastyleSources in Test) := Seq((scalaSource in Test).value),
+      scalastyleExclusions := Seq.empty[String]
     )
   }
 
@@ -87,7 +90,9 @@ object ScalastylePlugin extends AutoPlugin {
     import settings._
     Seq(
       scalastyle := {
-        val context = ScalastyleContext(scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+        val context = ScalastyleContext(scalastyleConfig.value,
+          scalastyleConfigUrl.value, scalastyleSources.value,
+          scalastyleExclusions.value,
           scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value,
           streams.value.log, spaceDelimited("<arg>").parsed
         )
@@ -97,6 +102,7 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyle in Test) := {
         val context = ScalastyleContext(
           (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+          (scalastyleExclusions in Test).value,
           (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
           (scalastyleConfigRefreshHours in Test).value, streams.value.log, spaceDelimited("<arg>").parsed
         )
@@ -112,7 +118,8 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleConfigUpdate := {
         Tasks.doScalastyleConfigUpdate(
           ScalastyleContext(
-            scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+            scalastyleConfig.value, scalastyleConfigUrl.value,
+            scalastyleSources.value, scalastyleExclusions.value,
             scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value, streams.value.log,
             spaceDelimited("<arg>").parsed
           )
@@ -121,7 +128,9 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyleConfigUpdate in Test) := {
         Tasks.doScalastyleConfigUpdate(
           ScalastyleContext(
-            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value,
+            (scalastyleSources in Test).value,
+            (scalastyleExclusions in Test).value,
             (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
             (scalastyleConfigRefreshHours in Test).value, streams.value.log, spaceDelimited("<arg>").parsed
           )
@@ -136,7 +145,8 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleGenerateConfig := {
         Tasks.doGenerateConfig(
           ScalastyleContext(
-            scalastyleConfig.value, scalastyleConfigUrl.value, scalastyleSources.value,
+            scalastyleConfig.value, scalastyleConfigUrl.value,
+            scalastyleSources.value, scalastyleExclusions.value,
             scalastyleTarget.value, scalastyleFailOnError.value, scalastyleConfigRefreshHours.value, streams.value.log,
             Seq.empty[String]
           )
@@ -145,7 +155,9 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyleGenerateConfig in Test) := {
         Tasks.doGenerateConfig(
           ScalastyleContext(
-            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value, (scalastyleSources in Test).value,
+            (scalastyleConfig in Test).value, (scalastyleConfigUrl in Test).value,
+            (scalastyleSources in Test).value,
+            (scalastyleExclusions in Test).value,
             (scalastyleTarget in Test).value, (scalastyleFailOnError in Test).value,
             (scalastyleConfigRefreshHours in Test).value, streams.value.log, Seq.empty[String]
           )
@@ -224,7 +236,8 @@ object Tasks {
       }
     }
 
-    val messages : List[Message[FileSpec]] = runScalastyle(configFile, filesToProcess)
+    val messages : List[Message[FileSpec]] =
+      runScalastyle(configFile, filesToProcess, exclusions)
 
     saveToXml(messageConfig, messages, targetFile.absolutePath)
 
@@ -253,9 +266,19 @@ object Tasks {
     getFileFromJar(getClass.getResource("/scalastyle-config.xml"), context.configFile, context.logger)
   }
 
-  private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
-    val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
+  private[this] def runScalastyle(
+    config: File, dirsToProcess: Seq[File],
+    exclusions: Seq[String]
+  ) = {
+    val configuration =
+      ScalastyleConfiguration.readFromXml(config.absolutePath)
+    val unExcluded = Directory.getFiles(None, dirsToProcess, Nil)
+    val filesToProcess = unExcluded.filterNot { fileSpec =>
+      exclusions.exists(regex =>
+        new File(fileSpec.name).getName.matches(regex))
+    }
+    println(s"unExcluded:\n$unExcluded\nfilesToProcess:$filesToProcess")
+    new ScalastyleChecker().checkFiles(configuration, filesToProcess)
   }
 
   private[this] def printResults(
