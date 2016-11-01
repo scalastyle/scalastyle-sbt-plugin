@@ -6,7 +6,7 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.9.0-SNAPSHOT"
+version := "0.9.1-SNAPSHOT"
 
 scalaVersion := "2.10.5"
 
