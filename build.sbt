@@ -2,11 +2,11 @@ sbtPlugin := true
 
 scalacOptions := Seq("-deprecation", "-unchecked")
 
-organization := "org.scalastyle"
+organization := "com.reactific"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.9.1-SNAPSHOT"
+version := "0.9.1"
 
 scalaVersion := "2.10.5"
 
@@ -46,13 +46,13 @@ pomExtra := (
     </license>
   </licenses>
   <scm>
-    <url>scm:git:git@github.com:scalastyle/scalastyle.git</url>
-    <connection>scm:git:git@github.com:scalastyle/scalastyle.git</connection>
+    <url>scm:git:git@github.com:reactific/sbt-scalastyle-plugin.git</url>
+    <connection>scm:git:git@github.com:reactufuc/sbt-scalastyle-plugin.git</connection>
   </scm>
   <developers>
     <developer>
-      <id>matthewfarwell</id>
-      <name>Matthew Farwell</name>
-      <url>http://www.farwell.co.uk</url>
+      <id>reid-spencer</id>
+      <name>Reid Spencer</name>
+      <url>https://github.com/reid-spencer</url>
     </developer>
   </developers>)
