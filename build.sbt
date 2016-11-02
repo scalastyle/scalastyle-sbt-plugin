@@ -2,11 +2,13 @@ sbtPlugin := true
 
 scalacOptions := Seq("-deprecation", "-unchecked")
 
-organization := "org.scalastyle"
+organization := "com.reactific"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.9.0-SNAPSHOT"
+version := "0.9.1"
+
+scalaVersion := "2.10.5"
 
 publishMavenStyle := true
 
@@ -17,13 +19,13 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 //resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "0.9.0-SNAPSHOT"
+  "org.scalastyle" %% "scalastyle" % "0.8.0"
 )
 
 publishTo <<= version { (v: String) =>
   val nexus = "https://oss.sonatype.org/"
-  if (v.trim.endsWith("SNAPSHOT")) 
-    Some("snapshots" at nexus + "content/repositories/snapshots") 
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
@@ -44,13 +46,13 @@ pomExtra := (
     </license>
   </licenses>
   <scm>
-    <url>scm:git:git@github.com:scalastyle/scalastyle.git</url>
-    <connection>scm:git:git@github.com:scalastyle/scalastyle.git</connection>
+    <url>scm:git:git@github.com:reactific/sbt-scalastyle-plugin.git</url>
+    <connection>scm:git:git@github.com:reactufuc/sbt-scalastyle-plugin.git</connection>
   </scm>
   <developers>
     <developer>
-      <id>matthewfarwell</id>
-      <name>Matthew Farwell</name>
-      <url>http://www.farwell.co.uk</url>
+      <id>reid-spencer</id>
+      <name>Reid Spencer</name>
+      <url>https://github.com/reid-spencer</url>
     </developer>
   </developers>)
