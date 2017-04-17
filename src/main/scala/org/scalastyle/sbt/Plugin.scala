@@ -16,51 +16,46 @@
 
 package org.scalastyle.sbt
 
+import java.net.URL
 import java.util.Date
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 
-import scala.io.Codec
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory
 import org.scalastyle.Directory
 import org.scalastyle.FileSpec
 import org.scalastyle.Message
+import org.scalastyle.Output
 import org.scalastyle.OutputResult
 import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
-import org.scalastyle.Output
 import org.scalastyle.XmlOutput
-import sbt.Configuration
+import sbt.AutoPlugin
 import sbt.Compile
-import sbt.Test
 import sbt.ConfigKey.configurationToKey
 import sbt.File
 import sbt.IO
-import sbt.inputKey
 import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Logger
-import sbt.AutoPlugin
-import sbt.Plugins
 import sbt.PluginTrigger
-import sbt.Process
+import sbt.Plugins
 import sbt.Project
-import sbt.Scoped.t3ToTable3
-import sbt.Scoped.t6ToTable6
-import sbt.settingKey
-import sbt.taskKey
-import sbt.file
-import sbt.inputTask
-import sbt.richFile
-import sbt.std.TaskStreams
-import sbt.url
 import sbt.ScopedKey
-import com.typesafe.config.ConfigFactory
-import com.typesafe.config.Config
+import sbt.Test
+import sbt.file
+import sbt.inputKey
+import sbt.richFile
+import sbt.settingKey
+import sbt.std.TaskStreams
+import sbt.taskKey
+import sbt.Process
 
+import scala.io.Codec
 import scala.language.implicitConversions
-import java.net.URL
 
 object ScalastylePlugin extends AutoPlugin {
   import sbt.complete.DefaultParsers._
@@ -153,9 +148,9 @@ object Tasks {
       val f = configUrl match {
         case Some(url) => {
           val targetConfigFile = target / outputFile
-          if (!targetConfigFile.exists || MILLISECONDS.toHours((new Date()).getTime - targetConfigFile.lastModified) >= refreshHours) {
+          if (!targetConfigFile.exists || MILLISECONDS.toHours(new Date().getTime - targetConfigFile.lastModified) >= refreshHours) {
             try {
-              logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath())
+              logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath)
               Process.apply(targetConfigFile) #< url ! logger
             } catch {
               case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
@@ -167,21 +162,20 @@ object Tasks {
       }
 
       if (!quiet) {
-        logger.info("scalastyle using config " + f.getAbsolutePath())
+        logger.info("scalastyle using config " + f.getAbsolutePath)
       }
 
       f
     }
 
     def isInProject(sources: Seq[File])(f: File) = {
-        val validFile = f.exists() && sources.find(s => f.getAbsolutePath.startsWith(s.getAbsolutePath)).isDefined
-        if (!validFile) logger.warn(s"File $f does not exist in project")
-        validFile
+      val validFile = f.exists() && sources.exists(s => f.getAbsolutePath.startsWith(s.getAbsolutePath))
+      if (!validFile) logger.warn(s"File $f does not exist in project")
+      validFile
     }
 
     def doScalastyleWithConfig(config: File): Unit = {
-      val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass().getClassLoader())
-      //streams.log.error("messageConfig=" + messageConfig.root().render())
+      val messageConfig = ConfigFactory.load(new ScalastyleChecker().getClass.getClassLoader)
 
       val filesToProcess: Seq[File] = args.filterNot(supportedArgs.contains).map(file).filter(isInProject(scalastyleSources)) match {
         case Nil => scalastyleSources
@@ -213,7 +207,7 @@ object Tasks {
   }
 
   def doGenerateConfig(config: File, streams: TaskStreams[ScopedKey[_]]): Unit = {
-    getFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
+    extractFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
   private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
@@ -221,7 +215,8 @@ object Tasks {
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
   }
 
-  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false, silent: Boolean = false): OutputResult = {
+  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false,
+                                 warnError: Boolean = false, silent: Boolean = false): OutputResult = {
     def now: Long = new Date().getTime
     val start = now
 
@@ -249,7 +244,7 @@ object Tasks {
     def hasNext: Boolean = e.hasMoreElements
   }
 
-  private[this] def getFileFromJar(url: java.net.URL, destination: String, logger: Logger): Unit = {
+  private[this] def extractFileFromJar(url: java.net.URL, destination: String, logger: Logger): Unit = {
     def createFile(jarFile: JarFile, e: JarEntry, target: File): Unit = {
       IO.transfer(jarFile.getInputStream(e), target)
       logger.success("created: " + target)
@@ -291,10 +286,17 @@ object Tasks {
 private[sbt]
 class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boolean = false, silent: Boolean = false)
     extends Output[T] {
-  import org.scalastyle.{
-    StartWork, EndWork, StartFile, EndFile, StyleError, StyleException,
-    Level, ErrorLevel, WarningLevel, InfoLevel, MessageHelper
-  }
+  import org.scalastyle.EndFile
+  import org.scalastyle.EndWork
+  import org.scalastyle.ErrorLevel
+  import org.scalastyle.InfoLevel
+  import org.scalastyle.Level
+  import org.scalastyle.MessageHelper
+  import org.scalastyle.StartFile
+  import org.scalastyle.StartWork
+  import org.scalastyle.StyleError
+  import org.scalastyle.StyleException
+  import org.scalastyle.WarningLevel
 
   private val messageHelper = new MessageHelper(config)
 
@@ -314,16 +316,12 @@ class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boo
     }
   }
 
-  private[this]
-  def plevel(level: Level)(msg: => String): Unit = level match {
+  private[this] def plevel(level: Level)(msg: => String): Unit = level match {
     case ErrorLevel => logger.error(msg)
     case WarningLevel => if (warnError) logger.error(msg) else logger.warn(msg)
     case InfoLevel => logger.info(msg)
   }
 
-  private[this]
-  def location(file: T, line: Option[Int], column: Option[Int]): String =
-    (file.name +
-     line.map(n => ":" + n + column.map(":" + _).getOrElse(""))
-         .getOrElse(""))
+  private[this] def location(file: T, line: Option[Int], column: Option[Int]): String = file.name +
+     line.map(n => ":" + n + column.map(":" + _).getOrElse("")).getOrElse("")
 }
