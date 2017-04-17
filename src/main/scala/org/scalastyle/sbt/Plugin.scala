@@ -133,10 +133,12 @@ object Tasks {
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
     val quietArg = "q"
+    val silentArg = "s"
     val warnErrorArg = "w"
-    val supportedArgs = Set(quietArg, warnErrorArg)
+    val supportedArgs = Set(quietArg, silentArg, warnErrorArg)
 
     val quiet = args.contains(quietArg)
+    val silent = args.contains(silentArg)
     val warnError = args.contains(warnErrorArg)
 
     def onHasErrors(message: String): Unit = {
@@ -190,7 +192,7 @@ object Tasks {
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
-      val result = printResults(messageConfig, logger, messages, quiet = quiet, warnError = warnError)
+      val result = printResults(messageConfig, logger, messages, quiet = quiet, silent = silent, warnError = warnError)
       if (!quiet) {
         logger.success("created output: %s".format(target))
       }
@@ -219,18 +221,19 @@ object Tasks {
     new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
   }
 
-  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false): OutputResult = {
+  private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false, warnError: Boolean = false, silent: Boolean = false): OutputResult = {
     def now: Long = new Date().getTime
     val start = now
+
     val outputResult =
-      new SbtLogOutput(config, logger, warnError = warnError).output(messages)
+      new SbtLogOutput(config, logger, warnError = warnError, silent = silent).output(messages)
     // scalastyle:off regex
     if (!quiet) {
-      logger.info("Processed " + outputResult.files + " file(s)")
-      logger.info("Found " + outputResult.errors + " errors")
-      logger.info("Found " + outputResult.warnings + " warnings")
-      logger.info("Found " + outputResult.infos + " infos")
-      logger.info("Finished in " + (now - start) + " ms")
+      logger.info("scalastyle Processed " + outputResult.files + " file(s)")
+      logger.info("scalastyle Found " + outputResult.errors + " errors")
+      logger.info("scalastyle Found " + outputResult.warnings + " warnings")
+      logger.info("scalastyle Found " + outputResult.infos + " infos")
+      logger.info("scalastyle Finished in " + (now - start) + " ms")
     }
     // scalastyle:on regex
 
@@ -286,7 +289,7 @@ object Tasks {
   * @todo factor with TextOutput from scalastyle Output.scala
   */
 private[sbt]
-class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boolean = false)
+class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boolean = false, silent: Boolean = false)
     extends Output[T] {
   import org.scalastyle.{
     StartWork, EndWork, StartFile, EndFile, StyleError, StyleException,
@@ -301,11 +304,14 @@ class SbtLogOutput[T <: FileSpec](config: Config, logger: Logger, warnError: Boo
     case StartFile(file) => logger.verbose("start file " + file)
     case EndFile(file) => logger.verbose("end file " + file)
     case StyleError(file, clazz, key, level, args, line, column, customMessage) => {
-      plevel(level)(location(file, line, column) + ": " +
-          Output.findMessage(messageHelper, key, args, customMessage))
+      if (!silent) {
+        plevel(level)(location(file, line, column) + ": " +
+            Output.findMessage(messageHelper, key, args, customMessage))
+      }
     }
-    case StyleException(file, clazz, message, stacktrace, line, column) =>
-      logger.error(location(file, line, column) + ": " + message)
+    case StyleException(file, clazz, message, stacktrace, line, column) => {
+      if (!silent) logger.error(location(file, line, column) + ": " + message)
+    }
   }
 
   private[this]
