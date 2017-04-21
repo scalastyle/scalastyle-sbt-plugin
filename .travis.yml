@@ -4,7 +4,7 @@ script:
 jdk:
    - oraclejdk7
    - openjdk7
-sudo: false
+sudo: true
 
 before_install:
   - cat /etc/hosts # optionally check the content *before*
