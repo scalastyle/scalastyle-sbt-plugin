@@ -6,8 +6,6 @@ organization := "org.scalastyle"
 
 name := "scalastyle-sbt-plugin"
 
-version := "0.9.0-SNAPSHOT"
-
 publishMavenStyle := true
 
 resolvers += "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
