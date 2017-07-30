@@ -32,28 +32,14 @@ import org.scalastyle.OutputResult
 import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.XmlOutput
-import sbt.AutoPlugin
-import sbt.Compile
+import sbt._
 import sbt.ConfigKey.configurationToKey
-import sbt.File
-import sbt.IO
 import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
-import sbt.Logger
-import sbt.PluginTrigger
-import sbt.Plugins
-import sbt.Project
-import sbt.ScopedKey
-import sbt.Test
-import sbt.file
-import sbt.inputKey
-import sbt.richFile
-import sbt.settingKey
 import sbt.std.TaskStreams
-import sbt.taskKey
-import sbt.Process
 
+import scala.sys.process.{Process, ProcessLogger}
 import scala.io.Codec
 import scala.language.implicitConversions
 
@@ -151,7 +137,7 @@ object Tasks {
           if (!targetConfigFile.exists || MILLISECONDS.toHours(new Date().getTime - targetConfigFile.lastModified) >= refreshHours) {
             try {
               logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath)
-              Process.apply(targetConfigFile) #< url ! logger
+              Process(targetConfigFile) #< url ! ProcessLogger(streams.log.info(_), streams.log.error(_))
             } catch {
               case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
             }

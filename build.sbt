@@ -1,5 +1,7 @@
 sbtPlugin := true
 
+crossSbtVersions := Vector("0.13.16", "1.0.0-RC3")
+
 scalacOptions := Seq("-deprecation", "-unchecked")
 
 organization := "org.scalastyle"
@@ -18,9 +20,9 @@ libraryDependencies ++= Seq(
   "org.scalastyle" %% "scalastyle" % "0.10.0-SNAPSHOT"
 )
 
-publishTo <<= version { (v: String) =>
+publishTo := {
   val nexus = "https://oss.sonatype.org/"
-  if (v.trim.endsWith("SNAPSHOT")) 
+  if (isSnapshot.value)
     Some("snapshots" at nexus + "content/repositories/snapshots") 
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
