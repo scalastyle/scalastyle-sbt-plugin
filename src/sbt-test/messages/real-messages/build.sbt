@@ -10,7 +10,7 @@ containsMessage := {
     val lines = sbt.IO.readLines(file(filename))
     val contains = lines.find(s => s.contains(search)).isDefined
     if (!contains) {
-        error("Could not find " + search + " in " + filename)
+        sys.error("Could not find " + search + " in " + filename)
     }
     contains
 }

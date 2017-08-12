@@ -10,7 +10,7 @@ lazy val commonSettings = Seq(
     val lines = sbt.IO.readLines(filename)
     val contains = lines exists (_ contains search)
     if (!contains) {
-      error("Could not find " + search + " in " + filename)
+      sys.error("Could not find " + search + " in " + filename)
     }
     contains
   }
