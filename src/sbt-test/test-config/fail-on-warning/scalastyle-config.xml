@@ -1,0 +1,8 @@
+<scalastyle>
+ <name>Scalastyle standard configuration</name>
+ <check level="warning" class="org.scalastyle.file.FileLengthChecker" enabled="true">
+  <parameters>
+   <parameter name="maxFileLength"><![CDATA[5]]></parameter>
+  </parameters>
+ </check>
+</scalastyle>

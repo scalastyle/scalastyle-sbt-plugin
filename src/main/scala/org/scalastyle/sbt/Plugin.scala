@@ -54,6 +54,7 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
     val scalastyleConfigUrl = settingKey[Option[URL]]("Scalastyle configuration file as a URL")
     val scalastyleFailOnError = settingKey[Boolean]("If true, Scalastyle will fail the task when an error level rule is violated")
+    val scalastyleFailOnWarning = settingKey[Boolean]("If true, Scalastyle will fail the task when a warning level rule is violated")
     val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
     val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
@@ -70,12 +71,13 @@ object ScalastylePlugin extends AutoPlugin {
         val configUrlV = scalastyleConfigUrl.value
         val streamsV = streams.value
         val failOnErrorV = scalastyleFailOnError.value
+        val failOnWarningV = scalastyleFailOnWarning.value
         val scalastyleTargetV = scalastyleTarget.value
         val configRefreshHoursV = scalastyleConfigRefreshHours.value
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, failOnWarningV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -102,6 +104,8 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyleTarget in Test) := target.value / "scalastyle-test-result.xml",
       scalastyleFailOnError := true,
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
+      scalastyleFailOnWarning := false,
+      (scalastyleFailOnWarning in Test) := (scalastyleFailOnWarning in scalastyle).value,
       scalastyleSources := Seq((scalaSource in Compile).value),
       (scalastyleSources in Test) := Seq((scalaSource in Test).value)
     ) ++
@@ -110,7 +114,7 @@ object ScalastylePlugin extends AutoPlugin {
 }
 
 object Tasks {
-  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
+  def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, failOnWarning: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
                       streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
     val logger = streams.log
     val quietArg = "q"
@@ -122,11 +126,13 @@ object Tasks {
     val silent = args.contains(silentArg)
     val warnError = args.contains(warnErrorArg)
 
-    def onHasErrors(message: String): Unit = {
-      if (failOnError) {
-        sys.error(message)
-      } else {
-        logger.error(message)
+    def handleResult(hasError: Boolean, hasWarning: Boolean) {
+      if ((hasError && failOnError) || (hasWarning && (warnError || failOnWarning))) {
+        sys.error("Failing because of negative scalastyle result")
+      } else if (hasError) {
+        logger.error("errors exist")
+      } else if (hasWarning) {
+        logger.warn("warnings exist")
       }
     }
 
@@ -139,7 +145,7 @@ object Tasks {
               logger.info("downloading " + url + " to " + targetConfigFile.getAbsolutePath)
               Process(targetConfigFile) #< url ! ProcessLogger(streams.log.info(_), streams.log.error(_))
             } catch {
-              case ex: Exception => onHasErrors(s"Unable to download remote config: $ex")
+              case ex: Exception => sys.error(s"Unable to download remote config: $ex")
             }
           }
           targetConfigFile
@@ -177,11 +183,7 @@ object Tasks {
         logger.success("created output: %s".format(target))
       }
 
-      if (result.errors > 0) {
-        onHasErrors("errors exist")
-      } else if (warnError && result.warnings > 0) {
-        onHasErrors("warnings exist")
-      }
+      handleResult(hasError = result.errors > 0, hasWarning = result.warnings > 0)
     }
 
     val configFileToUse = getConfigFile(target, configUrl, config, urlCacheFile)
