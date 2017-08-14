@@ -32,16 +32,17 @@ import org.scalastyle.OutputResult
 import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.XmlOutput
-import sbt._
 import sbt.ConfigKey.configurationToKey
-import sbt.Keys.scalaSource
 import sbt.Keys.streams
 import sbt.Keys.target
+import sbt.Keys.unmanagedSourceDirectories
+import sbt._
 import sbt.std.TaskStreams
 
-import scala.sys.process.{Process, ProcessLogger}
 import scala.io.Codec
 import scala.language.implicitConversions
+import scala.sys.process.Process
+import scala.sys.process.ProcessLogger
 
 object ScalastylePlugin extends AutoPlugin {
   import sbt.complete.DefaultParsers._
@@ -106,8 +107,8 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyleFailOnError in Test) := (scalastyleFailOnError in scalastyle).value,
       scalastyleFailOnWarning := false,
       (scalastyleFailOnWarning in Test) := (scalastyleFailOnWarning in scalastyle).value,
-      scalastyleSources := Seq((scalaSource in Compile).value),
-      (scalastyleSources in Test) := Seq((scalaSource in Test).value)
+      scalastyleSources := (unmanagedSourceDirectories in Compile).value,
+      (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
