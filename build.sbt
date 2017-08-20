@@ -17,7 +17,7 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 //resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/dev/repo/"
 
 libraryDependencies ++= Seq(
-  "org.scalastyle" %% "scalastyle" % "1.0.0"
+  "org.scalastyle" %% "scalastyle" % "1.1.0-SNAPSHOT"
 )
 
 publishTo := {
