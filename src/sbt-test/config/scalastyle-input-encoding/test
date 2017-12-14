@@ -1,0 +1,5 @@
+# scalastyle with UTF-8 input file
+-> scalastyle
+> 'set scalastyleInputEncoding := Some(scala.io.Codec.UTF8.name)'
+> scalastyle
+$ exists target/scalastyle-output.xml

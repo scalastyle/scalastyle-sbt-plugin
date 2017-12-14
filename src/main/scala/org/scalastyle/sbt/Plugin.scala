@@ -59,6 +59,7 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
     val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
+    val scalastyleInputEncoding = settingKey[Option[String]]("The encoding that scalastyle will load the input files using")
   }
 
   import autoImport._
@@ -77,8 +78,10 @@ object ScalastylePlugin extends AutoPlugin {
         val configRefreshHoursV = scalastyleConfigRefreshHours.value
         val targetV = target.value
         val configCacheFileV = scalastyleConfigUrlCacheFile.value
+        val inputEncodingV = scalastyleInputEncoding.value
 
-        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, failOnWarningV, scalastyleSourcesV, scalastyleTargetV, streamsV, configRefreshHoursV, targetV, configCacheFileV)
+        Tasks.doScalastyle(args, configV, configUrlV, failOnErrorV, failOnWarningV, scalastyleSourcesV, scalastyleTargetV,
+                           streamsV, configRefreshHoursV, targetV, configCacheFileV, inputEncodingV)
       },
       scalastyleGenerateConfig := {
         val streamsValue = streams.value
@@ -108,7 +111,8 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleFailOnWarning := false,
       (scalastyleFailOnWarning in Test) := (scalastyleFailOnWarning in scalastyle).value,
       scalastyleSources := (unmanagedSourceDirectories in Compile).value,
-      (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value
+      (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value,
+      scalastyleInputEncoding := None
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
@@ -116,7 +120,7 @@ object ScalastylePlugin extends AutoPlugin {
 
 object Tasks {
   def doScalastyle(args: Seq[String], config: File, configUrl: Option[URL], failOnError: Boolean, failOnWarning: Boolean, scalastyleSources: Seq[File], scalastyleTarget: File,
-                      streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String): Unit = {
+                   streams: TaskStreams[ScopedKey[_]], refreshHours: Integer, target: File, urlCacheFile: String, inputEncoding: Option[String]): Unit = {
     val logger = streams.log
     val quietArg = "q"
     val silentArg = "s"
@@ -175,7 +179,7 @@ object Tasks {
         case files => files
       }
 
-      val messages = runScalastyle(config, filesToProcess)
+      val messages = runScalastyle(config, filesToProcess, inputEncoding)
 
       saveToXml(messageConfig, messages, scalastyleTarget.absolutePath)
 
@@ -199,9 +203,9 @@ object Tasks {
     extractFileFromJar(getClass.getResource("/scalastyle-config.xml"), config.absolutePath, streams.log)
   }
 
-  private[this] def runScalastyle(config: File, filesToProcess: Seq[File]) = {
+  private[this] def runScalastyle(config: File, filesToProcess: Seq[File], inputEncoding: Option[String]) = {
     val configuration = ScalastyleConfiguration.readFromXml(config.absolutePath)
-    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(None, filesToProcess, Nil))
+    new ScalastyleChecker().checkFiles(configuration, Directory.getFiles(inputEncoding, filesToProcess, Nil))
   }
 
   private[this] def printResults(config: Config, logger: Logger, messages: List[Message[FileSpec]], quiet: Boolean = false,
