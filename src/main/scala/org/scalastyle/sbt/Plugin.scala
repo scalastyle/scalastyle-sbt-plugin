@@ -33,10 +33,13 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.XmlOutput
 import sbt.ConfigKey.configurationToKey
+import sbt.Def.Initialize
+import sbt.Keys.compile
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Keys.unmanagedSourceDirectories
 import sbt._
+import sbt.inc.Analysis
 import sbt.std.TaskStreams
 
 import scala.io.Codec
@@ -50,6 +53,7 @@ object ScalastylePlugin extends AutoPlugin {
   object autoImport {
     val scalastyle = inputKey[Unit]("Run scalastyle on your code")
     val scalastyleGenerateConfig = taskKey[Unit]("Generate a default configuration files for scalastyle")
+    val compileThenCheckStyle = taskKey[Analysis]("Compiles sources and then runs scalastyle on your code.")
 
     val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
     val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
@@ -84,6 +88,11 @@ object ScalastylePlugin extends AutoPlugin {
         val streamsValue = streams.value
         val configValue = scalastyleConfig.value
         Tasks.doGenerateConfig(configValue, streamsValue)
+      },
+      compileThenCheckStyle :=  {
+        val analysis = compile.value
+        val _ = scalastyle.toTask("").value
+        analysis
       }
     )
 
