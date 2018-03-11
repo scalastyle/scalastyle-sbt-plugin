@@ -89,11 +89,13 @@ object ScalastylePlugin extends AutoPlugin {
         val configValue = scalastyleConfig.value
         Tasks.doGenerateConfig(configValue, streamsValue)
       },
-      compileThenCheckStyle :=  {
+      compileThenCheckStyle := Def.taskDyn {
         val analysis = compile.value
-        val _ = scalastyle.toTask("").value
-        analysis
-      }
+        Def.task {
+          val _ = scalastyle.toTask("").value
+          analysis
+        }
+      }.value
     )
 
   override def requires: Plugins = sbt.plugins.JvmPlugin
