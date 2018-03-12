@@ -92,8 +92,9 @@ object ScalastylePlugin extends AutoPlugin {
       },
       compileThenCheckStyle := Def.taskDyn {
         val analysis = compile.value
+        val args = scalastyleCompileArgs.value
         Def.task {
-          val _ = scalastyle.toTask("").value
+          val _ = scalastyle.toTask(args).value
           analysis
         }
       }.value
