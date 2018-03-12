@@ -1,0 +1,5 @@
+# compileThenCheckStyle depends on tasks in the same scope
+> clean
+> compileThenCheckStyle
+$ exists target/compile
+$ exists target/scalastyle

@@ -1,0 +1,2 @@
+# compileThenCheckStyle uses the scalastyleCompileArgs
+-> test:compileThenCheckStyle

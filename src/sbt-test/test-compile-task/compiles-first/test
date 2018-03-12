@@ -1,0 +1,3 @@
+# compileThenCheckStyle compiles first then if successful checks the style
+> clean
+> test:compileThenCheckStyle
