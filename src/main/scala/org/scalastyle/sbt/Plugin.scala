@@ -63,7 +63,7 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
     val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
-    val scalastyleCompileArgs = settingKey[Seq[String]]("The arguments that are passed to scalastyle when using compileThenCheckStyle")
+    val scalastyleCompileArgs = settingKey[String]("The arguments that are passed to scalastyle when using compileThenCheckStyle")
   }
 
   import autoImport._
@@ -121,7 +121,7 @@ object ScalastylePlugin extends AutoPlugin {
       (scalastyleFailOnWarning in Test) := (scalastyleFailOnWarning in scalastyle).value,
       scalastyleSources := (unmanagedSourceDirectories in Compile).value,
       (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value,
-      scalastyleCompileArgs := Seq.empty,
+      scalastyleCompileArgs := "",
       (scalastyleCompileArgs in Test) := (scalastyleCompileArgs in scalastyle).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
