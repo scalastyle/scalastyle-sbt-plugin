@@ -1,6 +1,6 @@
 sbtPlugin := true
 
-crossSbtVersions := Vector("0.13.17", "1.1.6")
+crossSbtVersions := Vector("0.13.17", "1.2.1")
 
 scalacOptions := Seq("-deprecation", "-unchecked")
 

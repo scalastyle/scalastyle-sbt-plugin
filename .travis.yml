@@ -6,7 +6,7 @@ matrix:
   - env: SBT_VERSION="0.13.17"
     jdk: openjdk7
     scala: 2.10.7
-  - env: SBT_VERSION="1.1.6"
+  - env: SBT_VERSION="1.2.1"
     jdk: oraclejdk8
     scala: 2.12.6
 sudo: true
