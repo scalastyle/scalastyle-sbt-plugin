@@ -1,4 +1,5 @@
 language: scala
+dist: trusty
 script:
   - sbt "++${TRAVIS_SCALA_VERSION}" "^^${SBT_VERSION}" scripted
 matrix:
