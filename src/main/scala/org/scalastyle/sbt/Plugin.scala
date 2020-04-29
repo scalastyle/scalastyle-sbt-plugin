@@ -33,10 +33,13 @@ import org.scalastyle.ScalastyleChecker
 import org.scalastyle.ScalastyleConfiguration
 import org.scalastyle.XmlOutput
 import sbt.ConfigKey.configurationToKey
+import sbt.Def.Initialize
+import sbt.Keys.compile
 import sbt.Keys.streams
 import sbt.Keys.target
 import sbt.Keys.unmanagedSourceDirectories
 import sbt._
+import sbt.inc.Analysis
 import sbt.std.TaskStreams
 
 import scala.io.Codec
@@ -50,6 +53,7 @@ object ScalastylePlugin extends AutoPlugin {
   object autoImport {
     val scalastyle = inputKey[Unit]("Run scalastyle on your code")
     val scalastyleGenerateConfig = taskKey[Unit]("Generate a default configuration files for scalastyle")
+    val compileThenCheckStyle = taskKey[Analysis]("Compiles sources and then runs scalastyle on your code")
 
     val scalastyleTarget = settingKey[File]("XML output file from scalastyle")
     val scalastyleConfig = settingKey[File]("Scalastyle configuration file")
@@ -59,6 +63,7 @@ object ScalastylePlugin extends AutoPlugin {
     val scalastyleConfigRefreshHours = settingKey[Integer]("How many hours until next run will fetch the scalastyle-config.xml again if location is a URI.")
     val scalastyleConfigUrlCacheFile = settingKey[String]("If scalastyleConfigUrl is set, it will be cached here")
     val scalastyleSources = settingKey[Seq[File]]("Which sources will scalastyle check")
+    val scalastyleCompileArgs = settingKey[String]("The arguments that are passed to scalastyle when using compileThenCheckStyle")
   }
 
   import autoImport._
@@ -84,7 +89,15 @@ object ScalastylePlugin extends AutoPlugin {
         val streamsValue = streams.value
         val configValue = scalastyleConfig.value
         Tasks.doGenerateConfig(configValue, streamsValue)
-      }
+      },
+      compileThenCheckStyle := Def.taskDyn {
+        val analysis = compile.value
+        val args = scalastyleCompileArgs.value
+        Def.task {
+          val _ = scalastyle.toTask(args).value
+          analysis
+        }
+      }.value
     )
 
   override def requires: Plugins = sbt.plugins.JvmPlugin
@@ -108,7 +121,9 @@ object ScalastylePlugin extends AutoPlugin {
       scalastyleFailOnWarning := false,
       (scalastyleFailOnWarning in Test) := (scalastyleFailOnWarning in scalastyle).value,
       scalastyleSources := (unmanagedSourceDirectories in Compile).value,
-      (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value
+      (scalastyleSources in Test) := (unmanagedSourceDirectories in Test).value,
+      scalastyleCompileArgs := "",
+      (scalastyleCompileArgs in Test) := (scalastyleCompileArgs in scalastyle).value
     ) ++
     Project.inConfig(Compile)(rawScalastyleSettings()) ++
     Project.inConfig(Test)(rawScalastyleSettings())
